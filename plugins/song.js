@@ -1,4 +1,4 @@
-const { cmd, commands } = require("../command");
+const { cmd } = require("../command");
 const yts = require("yt-search");
 const { ytmp3 } = require("@vreden/youtube_scraper");
 
@@ -6,53 +6,30 @@ cmd(
   {
     pattern: "song",
     react: "🎶",
-    desc: "Download Song",
+    desc: "Download Song (Stable)",
     category: "download",
     filename: __filename,
   },
-  async (
-    danuwa,
-    mek,
-    m,
-    {
-      from,
-      quoted,
-      body,
-      isCmd,
-      command,
-      args,
-      q,
-      isGroup,
-      sender,
-      senderNumber,
-      botNumber2,
-      botNumber,
-      pushname,
-      isMe,
-      isOwner,
-      groupMetadata,
-      groupName,
-      participants,
-      groupAdmins,
-      isBotAdmins,
-      isAdmins,
-      reply,
-    }
-  ) => {
+  async (danuwa, mek, m, { from, q, reply }) => {
     try {
-      if (!q) return reply("❌ *Please provide a song name or YouTube link*");
+      if (!q) return reply("❌ Song name ekak denna");
 
+      // 🔍 Search
       const search = await yts(q);
       const data = search.videos[0];
+
+      if (!data) return reply("❌ Song ekak hambune na");
+
       const url = data.url;
 
+      // 📝 Details
       let desc = `
-Song downloader
+🎶 *SONG DOWNLOADER*
+
 🎬 *Title:* ${data.title}
 ⏱️ *Duration:* ${data.timestamp}
-📅 *Uploaded:* ${data.ago}
 👀 *Views:* ${data.views.toLocaleString()}
-🔗 *Watch Here:* ${data.url}
+🔗 *Link:* ${data.url}
 `;
 
       await danuwa.sendMessage(
@@ -61,43 +38,37 @@ Song downloader
         { quoted: mek }
       );
 
-      const quality = "192";
-      const songData = await ytmp3(url, quality);
+      // ⏳ Duration limit
+      let parts = data.timestamp.split(":").map(Number);
+      let seconds =
+        parts.length === 3
+          ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+          : parts[0] * 60 + parts[1];
 
-      let durationParts = data.timestamp.split(":").map(Number);
-      let totalSeconds =
-        durationParts.length === 3
-          ? durationParts[0] * 3600 + durationParts[1] * 60 + durationParts[2]
-          : durationParts[0] * 60 + durationParts[1];
-
-      if (totalSeconds > 1800) {
-        return reply("⏳ *Sorry, audio files longer than 30 minutes are not supported.*");
+      if (seconds > 1800) {
+        return reply("⏳ 30min wadi song support na");
       }
 
-      await danuwa.sendMessage(
-        from,
-        {
-          audio: { url: songData.download.url },
-          mimetype: "audio/mpeg",
-        },
-        { quoted: mek }
-      );
+      let dl;
 
-      await danuwa.sendMessage(
-        from,
-        {
-          document: { url: songData.download.url },
-          mimetype: "audio/mpeg",
-          fileName: `${data.title}.mp3`,
-          caption: "🎶 *Your song is ready to be played!*",
-        },
-        { quoted: mek }
-      );
+      // 🎯 MAIN API TRY
+      try {
+        const songData = await ytmp3(url, "192");
 
-      return reply("✅ Thank you");
-    } catch (e) {
-      console.log(e);
-      reply(`❌ *Error:* ${e.message} 😞`);
-    }
-  }
-);
+        if (!songData || !songData.download?.url) {
+          throw "API error";
+        }
+
+        dl = songData.download.url;
+
+      } catch (err) {
+        console.log("Main API failed, using fallback...");
+
+        // 🔥 FALLBACK (vevioz)
+        dl = `https://api.vevioz.com/api/button/mp3/${data.videoId}`;
+
+        return await danuwa.sendMessage(
+          from,
+          {
+            text: `⚠️ *Main API down*\n\n⬇ Download karanna me link eka use karanna:\n${dl}`,
+          },
