@@ -7,7 +7,7 @@ cmd(
     alias: ["android", "af"],
     react: "📍",
     desc: "Download your favourite APK with full info",
-    category: "download",
+    category: "download", 
     filename: __filename,
   },
   async (bot, mek, m, { q, reply, from }) => {
