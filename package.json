@@ -32,6 +32,6 @@
     "tmp": "^0.2.3",
     "util": "^0.12.4",
     "vm": "^0.1.0",
-    "xaviabot/fb-downloader": "^1.0.14"
+    "@xaviabot/fb-downloader": "^1.0.14"
   }
 }
