@@ -1,29 +1,22 @@
-const {cmd , commands} = require('../command')
-const os = require("os")
-const {runtime} = require('../lib/functions')
+const { cmd } = require("../command");
 
-cmd({
-    pattern: "system",
-    alias: ["status","botinfo"],
-    desc: "check up time",
-    category: "main",
-    react: "🧬",
-    filename: __filename
-},
-async(conn, mek, m,{from, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply}) => {
-try{ 
-
-let status =`
-┌───────────────────◉▷
-┝ ✨ *Runtime :-  ${runtime(process.uptime())}*    
-┝ 🎁 *Ram usage :- ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB / ${Math.round(require('os').totalmem / 1024 / 1024)}MB*
-┝ 🦕 *Platform :- ${os.hostname()}*
-┝ 🥀 *Owner* :- *Mr Gavesh </>* 
-┝ 👾 *Version :- 1.0.0*
-
-return reply(`${status}`)
-}catch(e){
-console.log(e)
-reply(`${e}`)
+function formatUptime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return `${h}h ${m}m ${s}s`;
 }
-})
+
+cmd(
+  {
+    pattern: "uptime",
+    react: "⏱️",
+    desc: "Show how long the bot has been running",
+    category: "main",
+    filename: __filename,
+  },
+  async (danuwa, mek, m, { reply }) => {
+    const uptime = process.uptime(); // in seconds
+    reply(`⏱️ *Bot Uptime:* ${formatUptime(uptime)}`);
+  }
+);
