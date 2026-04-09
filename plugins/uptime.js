@@ -10,13 +10,18 @@ function formatUptime(seconds) {
 cmd(
   {
     pattern: "uptime",
-    react: "⏱️",
+    react: "⏱️", // WhatsApp react emoji
     desc: "Show how long the bot has been running",
     category: "main",
     filename: __filename,
   },
   async (danuwa, mek, m, { reply }) => {
-    const uptime = process.uptime(); // in seconds
-    reply(`⏱️ *Bot Uptime:* ${formatUptime(uptime)}`);
+    const uptime = process.uptime();
+
+    // 1️⃣ Send react emoji
+    await danuwa.sendMessage(m.key.remoteJid, { react: { text: "⏱️", key: m.key } });
+
+    // 2️⃣ Send reply message with same emoji
+    reply(`⏱️ Bot Uptime: ${formatUptime(uptime)}`);
   }
 );
