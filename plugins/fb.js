@@ -1,49 +1,93 @@
-const { cmd } = require('../command');
-const axios = require('axios');
+const { cmd, commands } = require("../command");
+const getFbVideoInfo = require("@xaviabot/fb-downloader");
 
-cmd({
-  pattern: "fb",
-  alias: ["facebook", "fbdl"],
-  desc: "Download Facebook videos",
-  category: "download",
-  filename: __filename
-}, async (conn, m, store, { from, q, reply }) => {
-  try {
-    if (!q || !q.startsWith("https://")) {
-      return reply("*`Need a valid Facebook URL!`*");
+cmd(
+  {
+    pattern: "fb",
+    alias: ["facebook"],
+    react: "✅",
+    desc: "Download Facebook Video",
+    category: "download",
+    filename: __filename,
+  },
+  async (
+    danuwa,
+    mek,
+    m,
+    {
+      from,
+      quoted,
+      body,
+      isCmd,
+      command,
+      args,
+      q,
+      isGroup,
+      sender,
+      senderNumber,
+      botNumber2,
+      botNumber,
+      pushname,
+      isMe,
+      isOwner,
+      groupMetadata,
+      groupName,
+      participants,
+      groupAdmins,
+      isBotAdmins,
+      isAdmins,
+      reply,
     }
+  ) => {
+    try {
+      if (!q) return reply("*Please provide a valid Facebook video URL!* ❤️");
 
-    await conn.sendMessage(from, { react: { text: '⏳', key: m.key } });
+      const fbRegex = /(https?:\/\/)?(www\.)?(facebook|fb)\.com\/.+/;
+      if (!fbRegex.test(q))
+        return reply("*Invalid Facebook URL! Please check and try again.* ☹️");
 
-    const apiUrl = `https://lance-frank-asta.onrender.com/api/downloader?url=${encodeURIComponent(q)}`;
-    const { data } = await axios.get(apiUrl);
+      reply("*Downloading your video...* ❤️");
 
-    if (!data?.content?.status || !data?.content?.data?.result?.length) {
-      throw new Error("Invalid API response or no video found.");
+      const result = await getFbVideoInfo(q);
+      if (!result || (!result.sd && !result.hd)) {
+        return reply("*Failed to download video. Please try again later.* ☹️");
+      }
+
+      const { title, sd, hd } = result;
+      const bestQualityUrl = hd || sd;
+      const qualityText = hd ? "HD" : "SD";
+
+      const desc = `
+Your fb video
+👻 *Title*: ${title || "Unknown"}
+👻 *Quality*: ${qualityText}
+> powefull bot ✘
+`;
+
+      await danuwa.sendMessage(
+        from,
+        {
+          image: {
+            url: "https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png",
+          },
+          caption: desc,
+        },
+        { quoted: mek }
+      );
+
+      await danuwa.sendMessage(
+        from,
+        {
+          video: { url: bestQualityUrl },
+          caption: `*📥 Downloaded in ${qualityText} quality*`,
+        },
+        { quoted: mek }
+      );
+
+      return reply("Thank you for using VIMA-MD✘");
+    } catch (e) {
+      console.error(e);
+      reply(`*Error:* ${e.message || e}`);
     }
-
-    let videoData = data.content.data.result.find(v => v.quality === "HD") || 
-                    data.content.data.result.find(v => v.quality === "SD");
-
-    if (!videoData) {
-      throw new Error("No valid video URL found.");
-    }
-
-    await conn.sendMessage(from, {
-      video: { url: videoData.url },
-      caption: `📥 *Downloaded in ${videoData.quality} Quality*\n\n🔗 *💙 POWERED BY MR HASHUU 💙*`
-    }, { quoted: m });
-
-  } catch (error) {
-    console.error("FB Download Error:", error);
-
-    // Send error details to bot owner
-    const ownerNumber = conn.user.id.split(":")[0] + "@s.whatsapp.net";
-    await conn.sendMessage(ownerNumber, {
-      text: `⚠️ *FB Downloader Error!*\n\n📍 *Group/User:* ${from}\n💬 *Query:* ${q}\n❌ *Error:* ${error.message || error}`
-    });
-
-    // Notify the user
-    reply("❌ *Error:* Unable to process the request. Please try again later.");
   }
-});
+);
