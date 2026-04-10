@@ -27,7 +27,7 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 const prefix = '.';
-const ownerNumber = ['94789707579'];
+const ownerNumber = ['94742838159'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
 
 async function ensureSessionFile() {
@@ -87,7 +87,9 @@ async function connectToWA() {
     } else if (connection === 'open') {
       console.log('✅ DANUWA-MD connected to WhatsApp');
 
-      const up = `DANUWA-MD connected ✅\n\nPREFIX: ${prefix}`;
+      const up = `DANUWA-MD connected ✅\n\nPREFIX: ${prefix}`
+        > vima md 
+        ;
       await danuwa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
         image: { url: `https://github.com/DANUWA-MD/DANUWA-MD/blob/main/images/DANUWA-MD.png?raw=true` },
         caption: up
