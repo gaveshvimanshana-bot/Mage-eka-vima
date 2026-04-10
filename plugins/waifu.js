@@ -7,7 +7,7 @@ cmd(
     alias: ["animegirl"],
     react: "💖",
     desc: "Sends a random waifu",
-    category: "anime",
+    category: "ai",
     filename: __filename,
   },
   async (danuwa, mek, m, { from, reply }) => {
