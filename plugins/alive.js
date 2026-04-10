@@ -135,8 +135,8 @@ ${menu.download}
 🤖 AI
 ${menu.ai}
 
-🧰 TOOLS
-${menu.tools}
+🧰 group
+${menu.group}
 
 🎮 FUN
 ${menu.fun}
