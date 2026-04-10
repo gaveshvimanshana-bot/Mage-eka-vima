@@ -5,7 +5,7 @@ cmd({
   alias: ["sendme", 'save'],
   react: '📤',
   desc: "Forwards quoted message back to user",
-  category: "utility",
+  category: "ai",
   filename: __filename
 }, async (client, message, match, { from }) => {
   try {
