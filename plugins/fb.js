@@ -5,7 +5,7 @@ cmd(
   {
     pattern: "fb",
     alias: ["facebook"],
-    react: "✅",
+    react: "📥",
     desc: "Download Facebook Video",
     category: "download",
     filename: __filename,
@@ -16,54 +16,47 @@ cmd(
     m,
     {
       from,
-      quoted,
-      body,
-      isCmd,
-      command,
-      args,
       q,
-      isGroup,
-      sender,
-      senderNumber,
-      botNumber2,
-      botNumber,
-      pushname,
-      isMe,
-      isOwner,
-      groupMetadata,
-      groupName,
-      participants,
-      groupAdmins,
-      isBotAdmins,
-      isAdmins,
       reply,
     }
   ) => {
     try {
-      if (!q) return reply("*Please provide a valid Facebook video URL!* ❤️");
+
+      if (!q) return reply("❌ Please provide a Facebook video URL!");
 
       const fbRegex = /(https?:\/\/)?(www\.)?(facebook|fb)\.com\/.+/;
-      if (!fbRegex.test(q))
-        return reply("*Invalid Facebook URL! Please check and try again.* ☹️");
+      if (!fbRegex.test(q)) {
+        return reply("❌ Invalid Facebook URL!");
+      }
 
-      reply("*Downloading your video...* ❤️");
+      reply("📥 Downloading your video... Please wait");
 
       const result = await getFbVideoInfo(q);
+
       if (!result || (!result.sd && !result.hd)) {
-        return reply("*Failed to download video. Please try again later.* ☹️");
+        return reply("❌ Failed to fetch video. Try again later.");
       }
 
       const { title, sd, hd } = result;
+
       const bestQualityUrl = hd || sd;
       const qualityText = hd ? "HD" : "SD";
 
+      //================== BEAUTIFUL CAPTION ==================
       const desc = `
-Your fb video
-👻 *Title*: ${title || "Unknown"}
-👻 *Quality*: ${qualityText}
-> powefull bot ✘
+╭━━〔 🎬 FACEBOOK DOWNLOADER 〕━━╮
+
+👻 *Title*   : ${title || "Unknown"}
+📡 *Quality* : ${qualityText}
+📥 *Status*  : Ready to Download
+
+╭━━〔 🤖 DARK-CYBER-MD 〕━━╮
+⚡ Fast Facebook Downloader
+🚀 Powered by NodeJS
+╰━━━━━━━━━━━━━━━━━━━━╯
 `;
 
+      //================== THUMBNAIL ==================
       await danuwa.sendMessage(
         from,
         {
@@ -75,19 +68,26 @@ Your fb video
         { quoted: mek }
       );
 
+      //================== VIDEO SEND ==================
       await danuwa.sendMessage(
         from,
         {
           video: { url: bestQualityUrl },
-          caption: `*📥 Downloaded in ${qualityText} quality*`,
+          caption: `╭━━〔 📥 VIDEO DOWNLOADED 〕━━╮
+📡 Quality : ${qualityText}
+🎬 Enjoy Your Video
+
+⚡ DARK-CYBER-MD BOT
+╰━━━━━━━━━━━━━━━━━━━━╯`,
         },
         { quoted: mek }
       );
 
-      return reply("Thank you for using VIMA-MD✘");
+      return reply("╭━━〔 ✅ DONE 〕━━╮\n📥 Video sent successfully!\n⚡ DARK-CYBER-MD\n╰━━━━━━━━━━━━━━╯");
+
     } catch (e) {
       console.error(e);
-      reply(`*Error:* ${e.message || e}`);
+      reply(`❌ Error: ${e.message || e}`);
     }
   }
 );
