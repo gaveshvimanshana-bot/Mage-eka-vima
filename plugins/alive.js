@@ -8,17 +8,19 @@ cmd({
     pattern: "alive",
     desc: "Check bot online",
     category: "main",
+    react: "👋",
     filename: __filename
 }, async(conn, mek, m, {from, pushname, reply}) => {
     try {
 
         let msg = `
 👋 Hi ${pushname}
-🤖 *DARK-CYBER-MD ONLINE*
+🤖 *𝗩𝗜𝗠𝗔-✘-𝗠𝗗 𝗔𝗟𝗜𝗩𝗘 𝗡𝗢𝗪*
 
 ⏳ Uptime: ${runtime(process.uptime())}
-👑 Owner: ${config.OWNER_NAME || "Unknown"}
+👑 Owner: ＭＲ ＧＡＶＥＳＨ
 ⚙️ Version: ${config.VERSION || "1.0.0"}
+> *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-𝗠𝗗 𝗩1 💐💙*
 `;
 
         await conn.sendMessage(from, {
@@ -113,17 +115,17 @@ cmd({
 
         let txt = `
 ╔════════════════════╗
-║ 🤖 *VIMA-✘-MD*
+║ 🤖 *VIMA-✘-MD*🔥
 ╚════════════════════╝
 
 👤 Name   : ${pushname}
 📅 Date   : ${date}
 ⏰ Time   : ${time}
-👑 Owner  : ${config.OWNER_NAME || "Mr Owner"}
+👑 Owner  : ${config.OWNER_NAME || "ＭＲ ＧＡＶＥＳＨ"}
 ⚙️ Version: ${config.VERSION || "1.0.0"}
 
 ╔════════════════════╗
-║ 📜 COMMAND LIST
+║ 📜 COMMAND LIST 🫟
 ╚════════════════════╝
 
 🔰 MAIN
@@ -145,7 +147,7 @@ ${menu.fun}
 ${menu.other}
 
 ╔════════════════════╗
-║ ⚡ > *VIMA MD* ⚡
+> *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-𝗠𝗗 𝗩 1 💐💙*
 ╚════════════════════╝
 `;
 
