@@ -8,79 +8,82 @@ cmd(
     pattern: "sticker",
     alias: ["s", "st"],
     react: "🎯",
-    desc: "Convert image/video to sticker",
-    category: "convert",
+    category: "ai",
     filename: __filename,
   },
   async (conn, mek, m, { from, quoted, reply }) => {
     try {
 
-      const msg = quoted ? quoted : m;
+      const msg = quoted || m;
 
-      const type =
+      const mime =
         msg.message?.imageMessage
           ? "image"
           : msg.message?.videoMessage
           ? "video"
           : null;
 
-      if (!type) {
-        return reply("❌ Please reply to an image or video!");
+      if (!mime) {
+        return reply("❌ Reply to image or video!");
       }
 
-      reply("🎯 Creating sticker... Please wait");
+      reply("🎯 Creating sticker...");
 
-      const mediaPath = await conn.downloadAndSaveMediaMessage(msg);
+      const input = await conn.downloadAndSaveMediaMessage(msg);
 
-      const outputPath = path.join(__dirname, "../temp_" + Date.now() + ".webp");
+      const output = path.join(__dirname, "../" + Date.now() + ".webp");
 
       //================ IMAGE ==================
-      if (type === "image") {
+      if (mime === "image") {
 
         exec(
-          `ffmpeg -i ${mediaPath} -vf "scale=512:512:force_original_aspect_ratio=decrease" -y ${outputPath}`,
+          `ffmpeg -i ${input} -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15" -vcodec libwebp -quality 80 -lossless 1 -y ${output}`,
           async (err) => {
 
             if (err) {
               console.log(err);
-              return reply("❌ Failed to create sticker");
+              return reply("❌ Sticker failed (image)");
             }
 
+            const sticker = fs.readFileSync(output);
+
             await conn.sendMessage(from, {
-              sticker: fs.readFileSync(outputPath),
+              sticker: sticker,
             }, { quoted: mek });
 
-            fs.unlinkSync(mediaPath);
-            fs.unlinkSync(outputPath);
+            fs.unlinkSync(input);
+            fs.unlinkSync(output);
           }
         );
       }
 
       //================ VIDEO ==================
-      if (type === "video") {
+      if (mime === "video") {
 
         exec(
-          `ffmpeg -i ${mediaPath} -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15" -t 6 -y ${outputPath}`,
+          `ffmpeg -i ${input} -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15" -t 6 -vcodec libwebp -lossless 1 -y ${output}`,
           async (err) => {
 
             if (err) {
               console.log(err);
-              return reply("❌ Failed to create sticker");
+              return reply("❌ Sticker failed (video)");
             }
 
+            const sticker = fs.readFileSync(output);
+
             await conn.sendMessage(from, {
-              sticker: fs.readFileSync(outputPath),
+              sticker: sticker,
             }, { quoted: mek });
 
-            fs.unlinkSync(mediaPath);
-            fs.unlinkSync(outputPath);
+            fs.unlinkSync(input);
+            fs.unlinkSync(output);
           }
         );
       }
 
     } catch (e) {
       console.log(e);
-      reply("❌ Error while creating sticker");
+      reply("❌ Error in sticker command");
     }
   }
 );
