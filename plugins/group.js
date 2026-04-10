@@ -297,4 +297,3 @@ cmd({
 
   return reply(txt, { mentions: owner ? [owner] : [] });
 });
-
