@@ -87,7 +87,23 @@ async function connectToWA() {
     } else if (connection === 'open') {
       console.log('✅ DANUWA-MD connected to WhatsApp');
 
-      const up = `DANUWA-MD connected ✅\n\nPREFIX: ${prefix}`;
+      const up = `╔═══◉ 🟢 SYSTEM ACTIVE ◉═══╗
+║  ⚡ *Welcome to VIMA-✘-MD* ⚡  
+║  Smart • Fast • Reliable 🤖  
+║  Type your command & enjoy 💬  
+╚═════════════════════════╝
+
+🧾 *BOT DETAILS*
+┌──────── ⋆⋅☆✘⋅⋆ ────────┐
+│ 👑 *Owner*   : GAVESH VIMANSHNA  
+│ 🤖 *Bot*     : VIMA-✘-MD  
+│ 🚀 *Version* : v1.0.0  
+│ 🫟 *Number*  : 94789706579
+│ ⚡ *Status*  : Fully Operational  
+└──────── ⋆⋅☆✘⋅⋆ ────────┘
+💡 _“Powering your WhatsApp experience like never before!”_
+
+ > *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-✘-𝗠𝗗 🆅1 💐💙*`;
       await danuwa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
         image: { url: `https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png` },
         caption: up
