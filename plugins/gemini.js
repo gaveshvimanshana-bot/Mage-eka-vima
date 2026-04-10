@@ -1,31 +1,36 @@
 const { cmd } = require("../command");
 const axios = require("axios");
 
-const API_BASE = "https://ai-proxy-server-smoky.vercel.app/";
+const API_KEY = "AIzaSyBY1e7YMrz7gtzuZhFOzCoQQcrEGfzqTvI";
 
-cmd(
-  {
-    pattern: "gemini",
-    react: "✨",
-    desc: "Chat with Gemini AI",
-    category: "ai",
-    filename: __filename,
-  },
-  async (danuwa, mek, m, { from, q, reply }) => {
-    if (!q) return reply("❌ Provide a query or prompt.");
+cmd({
+  pattern: "ai",
+  desc: "Chat with Gemini AI",
+  category: "ai",
+  react: "🤖",
+  filename: __filename
+},
+async (conn, mek, m, { from, reply, q }) => {
+  try {
+    if (!q) return reply("❌ Question ekak denna!");
 
-    try {
-      const payload = { query: q };
-      const res = await axios.post(`${API_BASE}/gemini`, payload);
+    const res = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [{ text: q }]
+          }
+        ]
+      }
+    );
 
-      await danuwa.sendMessage(
-        from,
-        { text: res.data.answer || "❌ No response" },
-        { quoted: mek }
-      );
-    } catch (err) {
-      console.error("Gemini Error:", err.message);
-      reply("❌ Failed to fetch response from GEMINI.");
-    }
+    const text = res.data.candidates[0].content.parts[0].text;
+
+    reply(`🤖 Gemini:\n\n${text}`);
+
+  } catch (e) {
+    console.log(e.response?.data || e.message);
+    reply("❌ Gemini error ekak awa!");
   }
-);
+});
