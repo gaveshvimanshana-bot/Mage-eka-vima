@@ -103,7 +103,7 @@ async function connectToWA() {
 └──────── ⋆⋅☆✘⋅⋆ ────────┘
 💡 _“Powering your WhatsApp experience like never before!”_
 
- > *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-✘-𝗠𝗗 🆅1 💐💙*`;
+ > 𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-✘-𝗠𝗗 🆅1 💐💙*`;
       await danuwa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
         image: { url: `https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png` },
         caption: up
