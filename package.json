@@ -38,6 +38,8 @@
     "@vreden/youtube_scraper": "^1.2.8",
     "cheerio": "^1.2.0",
     "abir-photo360-apis": "^1.0.2",
-    "puppeteer": "^24.40.0" 
+    "puppeteer": "^24.40.0",
+    "canvas": "^3.2.3",
+    "sharp": "^0.34.5"
   }
 }
