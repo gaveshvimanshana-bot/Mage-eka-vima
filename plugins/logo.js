@@ -110,9 +110,10 @@ Example:
 ✨ Effect : ${effectName.toUpperCase()}
 📝 Text   : ${text}
 
-╭━━〔 🤖 DARK-CYBER-MD 〕━━╮
+╭━━〔 🤖 VIMA-✘-MD 〕━━╮
 ⚡ Generated Successfully
 🚀 Ephoto360 Powered
+> *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-𝗠𝗗 𝗩1 💐💙*
 ╰━━━━━━━━━━━━━━━━━━━━╯`;
 
         await conn.sendMessage(
