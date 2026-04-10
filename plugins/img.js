@@ -1,52 +1,28 @@
 const { cmd } = require("../command");
 
 cmd({
-  pattern: "img",
-  desc: "Advanced Free AI Image Generator",
-  category: "ai",
-  react: "🖼️",
-  filename: __filename
+pattern: "img",
+desc: "Generate AI Image",
+category: "ai",
+react: "🖼️",
+filename: __filename
 },
 async (conn, mek, m, { from, reply, q }) => {
-  try {
+try {
+if (!q) return reply("❌ Prompt ekak denna!\nEx: .img anime girl");
 
-    // ⛔ no prompt check
-    if (!q) return reply("❌ Prompt !\n\nEx: .img anime girl cyberpunk");
+// Free image generator (pollinations)  
+const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(q)}`;  
 
-    // ⏳ loading reaction
-    await conn.sendMessage(from, {
-      react: { text: "⏳", key: mek.key }
-    });
+await conn.sendMessage(from, {  
+  image: { url: url },  
+  caption: `🖼️ AI Image\n📝 Prompt: ${q}`  
+}, { quoted: mek });
 
-    // 🧼 clean prompt
-    let prompt = q.trim();
-
-    // 🎨 auto quality boost
-    const styles = [
-      "ultra HD",
-      "4K",
-      "cinematic lighting",
-      "high detail",
-      "sharp focus",
-      "anime style"
-    ];
-
-    const randomStyle = styles[Math.floor(Math.random() * styles.length)];
-
-    prompt = `${prompt}, ${randomStyle}`;
-
-    // 🌐 FREE IMAGE API
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
-
-    // 📤 send image
-    await conn.sendMessage(from, {
-      image: { url },
-      caption: `🖼️ *AI IMAGE GENERATED*\n\n📝 Prompt: ${q}\n🎨 Style: ${randomStyle}\n⚡ Free AI Engine`
-    }, { quoted: mek });
-
-  } catch (e) {
-    console.log("IMG ERROR:", e);
-
-    reply("❌ Image generate fail 😢\nTry again later");
-  }
+} catch (e) {
+console.log(e);
+reply("❌ Error generating image!");
+}
 });
+
+Oke advance karna barida freee bn
