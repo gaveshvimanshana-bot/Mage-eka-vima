@@ -3,6 +3,7 @@ const { cmd, commands } = require('../command');
 const os = require("os");
 const { runtime } = require('../lib/functions');
 
+
 //================== ALIVE ==================
 cmd({
     pattern: "alive",
@@ -60,7 +61,7 @@ cmd({
 cmd({
     pattern: "system",
     category: "main",
-    react: "🔥",
+    react: "💻",
     filename: __filename
 }, async(conn, mek, m, { from, reply }) => {
     try {
@@ -99,7 +100,7 @@ cmd({
         const time = new Date().toLocaleTimeString();
 
         let menu = {
-            main:'', download:'', group:'', owner:'',
+            main:'', download:'', owner:'',
             convert:'', ai:'', tools:'', search:'',
             fun:'', voice:'', other:''
         };
@@ -107,50 +108,53 @@ cmd({
         for (let c of commands) {
             if (c.pattern && !c.dontAddCommandList) {
                 if (menu[c.category] !== undefined) {
-                    menu[c.category] += `▢ ${c.pattern}\n`;
+                    menu[c.category] += `┃ ▢ ${c.pattern}\n`;
                 }
             }
         }
 
         let txt = `
-╔════════════════════╗
-║ 🤖 *DARK-CYBER-MD*
-╚════════════════════╝
+╭━━━〔 🤖 *DARK-CYBER-MD* 〕━━━╮
+┃ 👤 User   : ${pushname}
+┃ 📅 Date   : ${date}
+┃ ⏰ Time   : ${time}
+┃ 👑 Owner  : ${config.OWNER_NAME || "Mr Owner"}
+┃ ⚙️ Version: ${config.VERSION || "1.0.0"}
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-👤 Name   : ${pushname}
-📅 Date   : ${date}
-⏰ Time   : ${time}
-👑 Owner  : ${config.OWNER_NAME || "Mr Owner"}
-⚙️ Version: ${config.VERSION || "1.0.0"}
+╭━━━〔 🔰 MAIN 〕━━━╮
+${menu.main || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-╔════════════════════╗
-║ 📜 COMMAND LIST
-╚════════════════════╝
+╭━━━〔 📥 DOWNLOAD 〕━━━╮
+${menu.download || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-🔰 MAIN
-${menu.main}
+╭━━━〔 🤖 AI 〕━━━╮
+${menu.ai || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-👥 GROUP
-${menu.group}
+╭━━━〔 🧰 TOOLS 〕━━━╮
+${menu.tools || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-📥 DOWNLOAD
-${menu.download}
+╭━━━〔 🎮 FUN 〕━━━╮
+${menu.fun || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-🤖 AI
-${menu.ai}
+╭━━━〔 📌 OTHER 〕━━━╮
+${menu.other || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-🧰 TOOLS
-${menu.tools}
+╭━━━〔 ⚡ SYSTEM INFO 〕━━━╮
+┃ ⏳ Uptime : ${runtime(process.uptime())}
+┃ 🖥 Platform: ${os.platform()}
+╰━━━━━━━━━━━━━━╯
 
-🎮 FUN
-${menu.fun}
-
-📌 OTHER
-${menu.other}
-
-╔════════════════════╗
-║ ⚡ DARK-CYBER-MD ⚡
-╚════════════════════╝
+╭━━━〔 ⚡ DARK-CYBER-MD ⚡ 〕━━━╮
+┃ 💥 Powered By NodeJS
+┃ 🚀 Stay Online 24/7
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 `;
 
         await conn.sendMessage(from, {
@@ -162,83 +166,171 @@ ${menu.other}
         console.log(e);
         reply("❌ Error");
     }
+});const config = require('../config');
+const { cmd, commands } = require('../command');
+const os = require("os");
+const { runtime } = require('../lib/functions');
+
+
+//================== ALIVE ==================
+cmd({
+    pattern: "alive",
+    desc: "Check bot online",
+    category: "main",
+    filename: __filename
+}, async(conn, mek, m, {from, pushname, reply}) => {
+    try {
+
+        let msg = `
+👋 Hi ${pushname}
+🤖 *DARK-CYBER-MD ONLINE*
+
+⏳ Uptime: ${runtime(process.uptime())}
+👑 Owner: ${config.OWNER_NAME || "Unknown"}
+⚙️ Version: ${config.VERSION || "1.0.0"}
+`;
+
+        await conn.sendMessage(from, {
+            image: { url: config.ALIVE_IMG || 'https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png' },
+            caption: msg
+        }, { quoted: mek });
+
+    } catch (e) {
+        console.log(e);
+        reply("❌ Error");
+    }
 });
 
 
-//================== GROUP COMMANDS ==================
-
-// KICK
+//================== PING ==================
 cmd({
-    pattern: "kick",
-    category: "group",
+    pattern: "ping",
+    category: "main",
+    react: "⚡",
     filename: __filename
-}, async(conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, isOwner, quoted, reply }) => {
+}, async (conn, mek, m, { from, reply }) => {
+    try {
+        const start = Date.now();
+        const m1 = await conn.sendMessage(from, { text: 'Pinging...' });
+        const ping = Date.now() - start;
 
-    if (!isGroup) return reply("Group only");
-    if (!isAdmins && !isOwner) return reply("Admin only");
-    if (!isBotAdmins) return reply("Bot not admin");
+        await conn.sendMessage(from, {
+            text: `⚡ Pong: ${ping}ms`
+        }, { quoted: m1 });
 
-    let user = quoted ? quoted.sender : m.mentionedJid[0];
-    if (!user) return reply("Reply or tag user");
-
-    await conn.groupParticipantsUpdate(from, [user], "remove");
-    reply("✅ Kicked");
+    } catch {
+        reply("Error");
+    }
 });
 
 
-// ADD
+//================== SYSTEM ==================
 cmd({
-    pattern: "add",
-    category: "group",
+    pattern: "system",
+    category: "main",
+    react: "💻",
     filename: __filename
-}, async(conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, args, reply }) => {
+}, async(conn, mek, m, { from, reply }) => {
+    try {
 
-    if (!isGroup) return reply("Group only");
-    if (!isAdmins) return reply("Admin only");
-    if (!isBotAdmins) return reply("Bot not admin");
+        let total = (os.totalmem()/1073741824).toFixed(2);
+        let free = (os.freemem()/1073741824).toFixed(2);
+        let used = (total - free).toFixed(2);
 
-    if (!args[0]) return reply("Give number");
+        let sys = `
+💻 *SYSTEM INFO*
 
-    let num = args[0].replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+🖥 Platform: ${os.platform()}
+⚙ CPU Cores: ${os.cpus().length}
+📦 RAM Used: ${used}/${total} GB
+⏳ Uptime: ${runtime(process.uptime())}
+`;
 
-    await conn.groupParticipantsUpdate(from, [num], "add");
-    reply("✅ Added");
+        await conn.sendMessage(from, { text: sys }, { quoted: mek });
+
+    } catch {
+        reply("Error");
+    }
 });
 
 
-// PROMOTE
+//================== MENU ==================
 cmd({
-    pattern: "promote",
-    category: "group",
+    pattern: "menu",
+    category: "main",
+    react: "📜",
     filename: __filename
-}, async(conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, quoted, reply }) => {
+}, async(conn, mek, m, { from, pushname, reply }) => {
+    try {
 
-    if (!isGroup) return reply("Group only");
-    if (!isAdmins) return reply("Admin only");
-    if (!isBotAdmins) return reply("Bot not admin");
+        const date = new Date().toLocaleDateString();
+        const time = new Date().toLocaleTimeString();
 
-    let user = quoted ? quoted.sender : m.mentionedJid[0];
-    if (!user) return reply("Reply or tag user");
+        let menu = {
+            main:'', download:'', owner:'',
+            convert:'', ai:'', tools:'', search:'',
+            fun:'', voice:'', other:''
+        };
 
-    await conn.groupParticipantsUpdate(from, [user], "promote");
-    reply("✅ Promoted");
-});
+        for (let c of commands) {
+            if (c.pattern && !c.dontAddCommandList) {
+                if (menu[c.category] !== undefined) {
+                    menu[c.category] += `┃ ▢ ${c.pattern}\n`;
+                }
+            }
+        }
 
+        let txt = `
+╭━━━〔 🤖 *DARK-CYBER-MD* 〕━━━╮
+┃ 👤 User   : ${pushname}
+┃ 📅 Date   : ${date}
+┃ ⏰ Time   : ${time}
+┃ 👑 Owner  : ${config.OWNER_NAME || "Mr Owner"}
+┃ ⚙️ Version: ${config.VERSION || "1.0.0"}
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-// DEMOTE
-cmd({
-    pattern: "demote",
-    category: "group",
-    filename: __filename
-}, async(conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, quoted, reply }) => {
+╭━━━〔 🔰 MAIN 〕━━━╮
+${menu.main || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-    if (!isGroup) return reply("Group only");
-    if (!isAdmins) return reply("Admin only");
-    if (!isBotAdmins) return reply("Bot not admin");
+╭━━━〔 📥 DOWNLOAD 〕━━━╮
+${menu.download || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-    let user = quoted ? quoted.sender : m.mentionedJid[0];
-    if (!user) return reply("Reply or tag user");
+╭━━━〔 🤖 AI 〕━━━╮
+${menu.ai || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
 
-    await conn.groupParticipantsUpdate(from, [user], "demote");
-    reply("✅ Demoted");
+╭━━━〔 🧰 TOOLS 〕━━━╮
+${menu.tools || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
+
+╭━━━〔 🎮 FUN 〕━━━╮
+${menu.fun || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
+
+╭━━━〔 📌 OTHER 〕━━━╮
+${menu.other || "┃ _No Commands_"}
+╰━━━━━━━━━━━━━━╯
+
+╭━━━〔 ⚡ SYSTEM INFO 〕━━━╮
+┃ ⏳ Uptime : ${runtime(process.uptime())}
+┃ 🖥 Platform: ${os.platform()}
+╰━━━━━━━━━━━━━━╯
+
+╭━━━〔 ⚡ DARK-CYBER-MD ⚡ 〕━━━╮
+┃ 💥 Powered By NodeJS
+┃ 🚀 Stay Online 24/7
+╰━━━━━━━━━━━━━━━━━━━━━━╯
+`;
+
+        await conn.sendMessage(from, {
+            image: { url: config.MENU_IMG || 'https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png' },
+            caption: txt
+        }, { quoted: mek });
+
+    } catch (e) {
+        console.log(e);
+        reply("❌ Error");
+    }
 });
