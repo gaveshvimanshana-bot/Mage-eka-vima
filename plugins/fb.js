@@ -44,15 +44,15 @@ cmd(
 
       //================== BEAUTIFUL CAPTION ==================
       const desc = `
-╭━━〔 🎬 FACEBOOK DOWNLOADER 〕━━╮
+╭━━〔 *ＶＩＭＡ-ＭＤ FB DOWNLOADER* 〕━━╮
 
 👻 *Title*   : ${title || "Unknown"}
 📡 *Quality* : ${qualityText}
 📥 *Status*  : Ready to Download
 
-╭━━〔 🤖 DARK-CYBER-MD 〕━━╮
+╭━━〔 🤖 VIMA-✘-MD 〕━━╮
 ⚡ Fast Facebook Downloader
-🚀 Powered by NodeJS
+> *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-𝗠𝗗 𝗩1 💐💙*
 ╰━━━━━━━━━━━━━━━━━━━━╯
 `;
 
@@ -77,7 +77,8 @@ cmd(
 📡 Quality : ${qualityText}
 🎬 Enjoy Your Video
 
-⚡ DARK-CYBER-MD BOT
+⚡ 𝗩𝗜𝗠𝗔-✘-𝗠𝗗 BOT
+> *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-𝗠𝗗 𝗩1 💐💙*
 ╰━━━━━━━━━━━━━━━━━━━━╯`,
         },
         { quoted: mek }
