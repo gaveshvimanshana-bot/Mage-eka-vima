@@ -1,51 +1,70 @@
 const { cmd } = require("../command");
 const fs = require("fs");
-const path = require("path");
-const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+const { exec } = require("child_process");
 
-cmd({
-  pattern: "sticker",
-  alias: ["s", "st"],
-  desc: "Convert image/video to sticker",
-  react: "🧩",
-  category: "media",
-  filename: __filename
-},
-async (conn, mek, m, { from, quoted }) => {
+cmd(
+  {
+    pattern: "sticker",
+    alias: ["s", "st"],
+    react: "🎯",
+    desc: "Convert image/video to sticker",
+    category: "convert",
+    filename: __filename,
+  },
+  async (conn, mek, m, { from, quoted, reply }) => {
+    try {
 
-  try {
+      //================== CHECK MEDIA ==================
+      const msg = quoted || m;
 
-    if (!quoted) {
-      return await conn.sendMessage(from, { text: "❌ Reply to an image or video!" }, { quoted: mek });
+      if (!msg.message?.imageMessage && !msg.message?.videoMessage) {
+        return reply("❌ Please reply to an image or video!");
+      }
+
+      reply("🎯 Creating sticker... Please wait");
+
+      //================== DOWNLOAD MEDIA ==================
+      const media = await conn.downloadAndSaveMediaMessage(msg);
+
+      const output = "./sticker.webp";
+
+      //================== CONVERT TO WEBP ==================
+      if (msg.message.imageMessage) {
+
+        await exec(
+          `ffmpeg -i ${media} -vf "scale=512:512:force_original_aspect_ratio=decrease" ${output}`,
+          async (err) => {
+            if (err) return reply("❌ Failed to create sticker");
+
+            await conn.sendMessage(from, {
+              sticker: fs.readFileSync(output),
+            }, { quoted: mek });
+
+            fs.unlinkSync(media);
+            fs.unlinkSync(output);
+          }
+        );
+
+      } else if (msg.message.videoMessage) {
+
+        await exec(
+          `ffmpeg -i ${media} -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15" -t 6 ${output}`,
+          async (err) => {
+            if (err) return reply("❌ Failed to create sticker");
+
+            await conn.sendMessage(from, {
+              sticker: fs.readFileSync(output),
+            }, { quoted: mek });
+
+            fs.unlinkSync(media);
+            fs.unlinkSync(output);
+          }
+        );
+      }
+
+    } catch (e) {
+      console.log(e);
+      reply("❌ Error while creating sticker");
     }
-
-    let mime = quoted.mtype || "";
-
-    if (!/image|video/.test(mime)) {
-      return await conn.sendMessage(from, { text: "❌ Only image or video allowed!" }, { quoted: mek });
-    }
-
-    let stream = await downloadContentFromMessage(quoted.message, mime.includes("video") ? "video" : "image");
-
-    let buffer = Buffer.from([]);
-
-    for await (let chunk of stream) {
-      buffer = Buffer.concat([buffer, chunk]);
-    }
-
-    let filePath = path.join(__dirname, "../temp/sticker.webp");
-
-    fs.writeFileSync(filePath, buffer);
-
-    await conn.sendMessage(from, {
-      sticker: fs.readFileSync(filePath)
-    }, { quoted: mek });
-
-    fs.unlinkSync(filePath);
-
-  } catch (e) {
-    console.log(e);
-    await conn.sendMessage(from, { text: "❌ Sticker create failed!" }, { quoted: mek });
   }
-
-});
+);
