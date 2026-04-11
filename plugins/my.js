@@ -2,175 +2,461 @@ const { cmd } = require("../command");
 const axios = require("axios");
 const cheerio = require("cheerio");
 
-// ==================== PAST PAPER SEARCH ====================
+// ==================== MAIN PAST PAPER COMMAND ====================
 cmd({
-  pattern: "pastpaper",
-  alias: ["paper", "alpaper", "olpaper", "exam"],
+  pattern: "paper",
+  alias: ["pastpaper", "alpaper", "olpaper", "exam"],
   react: "📚",
-  desc: "Download Sri Lankan exam past papers (AL/OL)",
+  desc: "Download real GCE A/L & O/L past papers from official sources",
   category: "ai",
   filename: __filename,
 }, async (bot, mek, m, { q, reply, from }) => {
   try {
-    if (!q) return reply(`📚 *Past Paper Downloader*
+    if (!q) return reply(`📚 *REAL Past Paper Downloader*
 
-❌ *Please provide search details!*
+❌ *Please provide details!*
 
-📌 *Format:* \`.pastpaper <subject> <year> <type>\`
+📌 *Format:* \`.paper <subject> <year> <al/ol> [medium]\`
 
 📝 *Examples:*
-• \`.pastpaper maths 2022 al\`
-• \`.pastpaper physics 2021 ol\`
-• \`.pastpaper chemistry 2020 al\`
-• \`.pastpaper bio 2019 ol\`
+• \`.paper maths 2022 al\`
+• \`.paper physics 2021 ol\`  
+• \`.paper chemistry 2020 al sinhala\`
+• \`.paper bio 2019 ol english\`
 
-📋 *Subjects:* maths, physics, chemistry, bio, ict, econ, business, accounting, sinhala, english, history, geography
+📋 *Popular Subjects:*
+🔬 Science: maths, physics, chemistry, biology, ict
+💼 Commerce: accounting, business, econ
+🎨 Arts: sinhala, english, history, geography
 
-🏫 *Types:* al (Advanced Level) | ol (Ordinary Level)
+🌐 *Sources:* e-thaksalawa.gov.lk | pastpapers.wiki | e-kalvi.com
 
-> _Powered by Vima-MD Education_`);
+> _Vima-MD Education Bot_`);
 
     await bot.sendMessage(from, { react: { text: "🔍", key: mek.key } });
 
     // Parse query
     const args = q.toLowerCase().trim().split(' ');
-    const subject = args[0];
+    const subjectInput = args[0];
     const year = args[1] || '2022';
-    const type = args[2] || 'al'; // al or ol
+    const type = args[2] || 'al';
+    const medium = args[3] || 'english';
 
     // Validate
     if (!['al', 'ol'].includes(type)) {
-      return reply("❌ *Invalid type! Use 'al' or 'ol'\n\nExample: `.pastpaper maths 2022 al`");
+      return reply("❌ *Invalid type! Use 'al' or 'ol'*");
     }
 
-    // Search for paper
-    const paperData = await searchPastPaper(subject, year, type);
+    // Map subject names
+    const subjectMap = {
+      'maths': 'mathematics', 'math': 'mathematics', 'combined-maths': 'combined-mathematics',
+      'physics': 'physics', 'chem': 'chemistry', 'chemistry': 'chemistry',
+      'bio': 'biology', 'biology': 'biology', 'zoology': 'zoology', 'botany': 'botany',
+      'ict': 'ict', 'it': 'ict', 'git': 'git',
+      'econ': 'economics', 'economics': 'economics',
+      'acc': 'accounting', 'accounting': 'accounting',
+      'bs': 'business', 'business': 'business-studies', 'bst': 'business-studies',
+      'sinhala': 'sinhala', 'sin': 'sinhala',
+      'eng': 'english', 'english': 'english',
+      'tamil': 'tamil',
+      'history': 'history', 'geo': 'geography', 'geography': 'geography',
+      'art': 'art', 'music': 'music', 'dance': 'dance', 'drama': 'drama',
+      'agri': 'agriculture', 'agriculture': 'agriculture',
+      'et': 'engineering-technology', 'bt': 'bio-technology', 'st': 'science-technology'
+    };
 
-    if (!paperData.found) {
-      // Try alternative sources
-      const altResults = await searchAlternativeSources(subject, year, type);
-      
-      if (altResults.length === 0) {
-        return reply(`❌ *Past paper not found!*
+    const subject = subjectMap[subjectInput] || subjectInput;
 
-🔍 *Searched:* ${subject} ${year} ${type.toUpperCase()}
+    // Search all sources
+    await reply(`🔍 *Searching...*\n\n📖 Subject: ${subject}\n📅 Year: ${year}\n🏫 Type: ${type.toUpperCase()}\n🌐 Medium: ${medium}\n\n⏳ Checking official sources...`);
 
-💡 *Tips:*
-• Check spelling of subject
-• Try different year (2015-2023)
-• Use short names: 'maths' instead of 'mathematics'
+    let paperData = null;
+    let source = '';
 
-📚 *Available on:* 
-• www.pastpapers.wiki
-• www.e-thaksalawa.moe.gov.lk`);
+    // Try Source 1: pastpapers.wiki (most reliable)
+    try {
+      paperData = await searchPastPapersWiki(subject, year, type, medium);
+      if (paperData.found) source = 'pastpapers.wiki';
+    } catch (e) {
+      console.log("Wiki search failed:", e.message);
+    }
+
+    // Try Source 2: e-kalvi.com
+    if (!paperData || !paperData.found) {
+      try {
+        paperData = await searchEKalvi(subject, year, type, medium);
+        if (paperData.found) source = 'e-kalvi.com';
+      } catch (e) {
+        console.log("E-kalvi search failed:", e.message);
       }
+    }
 
-      // Show alternatives
-      let altText = `⚠️ *Exact paper not found, but found alternatives:*\n\n`;
-      altResults.forEach((paper, index) => {
-        altText += `${index + 1}. ${paper.title}\n`;
-        altText += `   📅 Year: ${paper.year}\n`;
-        altText += `   🔗 ${paper.url}\n\n`;
-      });
-      
-      return reply(altText + `> _Vima-MD Past Papers_`);
+    // Try Source 3: govdoc.lk
+    if (!paperData || !paperData.found) {
+      try {
+        paperData = await searchGovDoc(subject, year, type, medium);
+        if (paperData.found) source = 'govdoc.lk';
+      } catch (e) {
+        console.log("GovDoc search failed:", e.message);
+      }
+    }
+
+    // Try Source 4: e-thaksalawa (government - needs login usually)
+    if (!paperData || !paperData.found) {
+      paperData = {
+        found: false,
+        alternative: `https://e-thaksalawa.moe.gov.lk/lcms/course/index.php?categoryid=${type === 'al' ? '78' : '79'}`,
+        message: 'Direct download not available. Visit e-thaksalawa.gov.lk (requires login)'
+      };
+    }
+
+    if (!paperData.found && !paperData.alternative) {
+      return reply(`❌ *Paper not found in online sources!*
+
+🔍 *Searched:* ${subject} ${year} ${type.toUpperCase()} (${medium})
+
+💡 *Try:*
+• Different year (2015-2024)
+• Check spelling: \`maths\` not \`mathematics\`
+• Visit: https://pastpapers.wiki
+
+📚 *Official Sources:*
+• e-thaksalawa.moe.gov.lk [^32^]
+• pastpapers.wiki [^31^]
+• e-kalvi.com [^21^]`);
+    }
+
+    if (!paperData.found && paperData.alternative) {
+      return reply(`⚠️ *Direct download not available*
+
+📖 *Paper:* ${subject} ${year} ${type.toUpperCase()}
+
+🔗 *Visit official source:*
+${paperData.alternative}
+
+📥 *Download manually from:*
+• https://pastpapers.wiki
+• https://e-kalvi.com
+• https://govdoc.lk [^25^]`);
     }
 
     // Found paper - send info
-    await reply(`📚 *Past Paper Found!*
+    await reply(`📚 *Paper Found!*
 
-📖 *Subject:* ${paperData.subject}
-📅 *Year:* ${paperData.year}
-🏫 *Type:* ${paperData.type.toUpperCase()}
-📝 *Medium:* ${paperData.medium || 'English/Sinhala/Tamil'}
+📖 *Subject:* ${paperData.subject || subject}
+📅 *Year:* ${paperData.year || year}
+🏫 *Type:* ${type.toUpperCase()}
+🌐 *Medium:* ${paperData.medium || medium}
+📄 *Title:* ${paperData.title || 'GCE ' + type.toUpperCase() + ' ' + subject}
+🌐 *Source:* ${source}
 
 ⏳ *Preparing download...*`);
 
-    // Check file size
-    if (paperData.size && paperData.size > 50 * 1024 * 1024) {
-      // Too big for WhatsApp
-      await bot.sendMessage(from, {
-        document: { url: paperData.url },
-        fileName: `${paperData.filename}.pdf`,
-        mimetype: "application/pdf",
-        caption: `📚 ${paperData.title}\n\n⚠️ File too large. Downloading...`
-      }, { quoted: mek });
-    } else {
-      // Send directly
-      await bot.sendMessage(from, {
-        document: { url: paperData.url },
-        fileName: `${paperData.filename}.pdf`,
-        mimetype: "application/pdf",
-        caption: `📚 *${paperData.title}*
+    // Check if we have direct URL
+    if (!paperData.url) {
+      return reply(`⚠️ *Link found but direct download unavailable*
 
-📖 Subject: ${paperData.subject}
-📅 Year: ${paperData.year}
-🏫 Type: ${paperData.type.toUpperCase()}
+🔗 *Visit:* ${paperData.pageUrl || paperData.alternative || 'https://pastpapers.wiki'}
 
-> _Downloaded by Vima-MD_`
-      }, { quoted: mek });
+💡 *Bot cannot download from this source due to restrictions.*`);
     }
 
-    await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+    // Try to download and send
+    try {
+      await bot.sendMessage(from, { react: { text: "⬇️", key: mek.key } });
+      
+      // Check file size first (head request)
+      const headResponse = await axios.head(paperData.url, {
+        timeout: 10000,
+        validateStatus: () => true
+      });
+
+      const contentLength = headResponse.headers['content-length'];
+      const sizeMB = contentLength ? (contentLength / 1024 / 1024).toFixed(2) : 'Unknown';
+
+      await reply(`📊 *File Info:*
+📦 Size: ${sizeMB} MB
+📄 Type: PDF
+
+⏳ Downloading...`);
+
+      // If too big, send link only
+      if (contentLength && contentLength > 45 * 1024 * 1024) {
+        await reply(`⚠️ *File too large for WhatsApp (${sizeMB} MB)*
+
+📥 *Direct Download Link:*
+${paperData.url}
+
+🔗 *Source Page:*
+${paperData.pageUrl || 'N/A'}`);
+      } else {
+        // Download file
+        const response = await axios.get(paperData.url, {
+          responseType: 'arraybuffer',
+          timeout: 60000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/pdf'
+          }
+        });
+
+        // Save temporarily
+        const fs = require('fs');
+        const path = require('path');
+        const tempFile = path.join('/tmp', `paper_${Date.now()}.pdf`);
+        fs.writeFileSync(tempFile, response.data);
+
+        // Send document
+        await bot.sendMessage(from, {
+          document: { url: tempFile },
+          fileName: `${paperData.filename || type + '_' + subject + '_' + year}.pdf`,
+          mimetype: "application/pdf",
+          caption: `📚 *GCE ${type.toUpperCase()} Past Paper*
+
+📖 ${paperData.title || subject}
+📅 ${year}
+🌐 ${paperData.medium || medium}
+🌐 Source: ${source}
+
+> _Downloaded by Vima-MD_`
+        }, { quoted: mek });
+
+        // Cleanup
+        fs.unlinkSync(tempFile);
+      }
+
+      await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+
+    } catch (downloadErr) {
+      console.error("Download error:", downloadErr);
+      await reply(`⚠️ *Download failed!*
+
+🔗 *Try manual download:*
+${paperData.url || paperData.pageUrl}
+
+📄 *Paper:* ${paperData.title || subject + ' ' + year}`);
+    }
 
   } catch (err) {
-    console.error("Past Paper Error:", err);
-    reply("❌ *Failed to download past paper!*\n\nTry again later or check the website directly.");
+    console.error("Paper command error:", err);
+    reply("❌ *An error occurred! Please try again later.*");
     await bot.sendMessage(from, { react: { text: "❌", key: mek.key } });
   }
 });
 
-// ==================== SUBJECT LIST ====================
+// ==================== SEARCH FUNCTIONS ====================
+
+async function searchPastPapersWiki(subject, year, type, medium) {
+  try {
+    // Construct search URL for pastpapers.wiki
+    const searchUrl = `https://pastpapers.wiki/${type}-level-${subject.replace(/-/g, '-')}-${year}-past-paper/`;
+    
+    const response = await axios.get(searchUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      validateStatus: (status) => status < 500
+    });
+
+    if (response.status === 200) {
+      const $ = cheerio.load(response.data);
+      
+      // Look for PDF links
+      let pdfUrl = null;
+      let title = '';
+      
+      $('a').each((i, elem) => {
+        const href = $(elem).attr('href');
+        const text = $(elem).text();
+        
+        if (href && href.includes('.pdf')) {
+          // Check if matches medium
+          const lowerText = text.toLowerCase();
+          if (lowerText.includes(medium) || lowerText.includes('download')) {
+            pdfUrl = href.startsWith('http') ? href : `https://pastpapers.wiki${href}`;
+            title = text;
+            return false;
+          }
+        }
+      });
+
+      // Alternative: look for download buttons
+      if (!pdfUrl) {
+        $('a[href*="download"]').each((i, elem) => {
+          const href = $(elem).attr('href');
+          if (href && href.includes('.pdf')) {
+            pdfUrl = href.startsWith('http') ? href : `https://pastpapers.wiki${href}`;
+            title = $(elem).text() || 'Download';
+            return false;
+          }
+        });
+      }
+
+      if (pdfUrl) {
+        return {
+          found: true,
+          subject: subject,
+          year: year,
+          type: type,
+          medium: medium,
+          title: title || `GCE ${type.toUpperCase()} ${subject} ${year}`,
+          url: pdfUrl,
+          pageUrl: searchUrl,
+          filename: `${type.toUpperCase()}_${subject}_${year}_${medium}`
+        };
+      }
+    }
+
+    return { found: false };
+  } catch (err) {
+    console.error("Wiki search error:", err.message);
+    return { found: false };
+  }
+}
+
+async function searchEKalvi(subject, year, type, medium) {
+  try {
+    // e-kalvi.com search pattern
+    const searchQuery = `${type} ${subject} ${year} past paper`;
+    const searchUrl = `https://e-kalvi.com/?s=${encodeURIComponent(searchQuery)}`;
+    
+    const response = await axios.get(searchUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+    
+    // Find first result
+    const firstLink = $('article a').first().attr('href');
+    
+    if (firstLink) {
+      // Visit the post page
+      const postResponse = await axios.get(firstLink, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+
+      const $post = cheerio.load(postResponse.data);
+      
+      // Look for PDF links
+      let pdfUrl = null;
+      $post('a').each((i, elem) => {
+        const href = $post(elem).attr('href');
+        if (href && href.includes('.pdf')) {
+          pdfUrl = href;
+          return false;
+        }
+      });
+
+      if (pdfUrl) {
+        return {
+          found: true,
+          subject: subject,
+          year: year,
+          type: type,
+          medium: medium,
+          title: $post('h1').text() || `GCE ${type.toUpperCase()} ${subject} ${year}`,
+          url: pdfUrl,
+          pageUrl: firstLink,
+          filename: `${type.toUpperCase()}_${subject}_${year}_eKalvi`
+        };
+      }
+    }
+
+    return { found: false };
+  } catch (err) {
+    console.error("E-kalvi search error:", err.message);
+    return { found: false };
+  }
+}
+
+async function searchGovDoc(subject, year, type, medium) {
+  try {
+    // govdoc.lk category search
+    const categoryUrl = `https://govdoc.lk/category/past-papers/gce-${type === 'al' ? 'advance' : 'ordinary'}-level-exam/`;
+    
+    const response = await axios.get(categoryUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+    
+    // Find link matching subject and year
+    let paperUrl = null;
+    let title = '';
+    
+    $('article a, .entry-title a, h2 a').each((i, elem) => {
+      const href = $(elem).attr('href');
+      const text = $(elem).text().toLowerCase();
+      
+      if (text.includes(subject) && text.includes(year)) {
+        paperUrl = href;
+        title = $(elem).text();
+        return false;
+      }
+    });
+
+    if (paperUrl) {
+      // Visit paper page to get PDF
+      const paperResponse = await axios.get(paperUrl, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+
+      const $paper = cheerio.load(paperResponse.data);
+      
+      let pdfUrl = null;
+      $paper('a').each((i, elem) => {
+        const href = $paper(elem).attr('href');
+        if (href && href.includes('.pdf')) {
+          pdfUrl = href;
+          return false;
+        }
+      });
+
+      if (pdfUrl) {
+        return {
+          found: true,
+          subject: subject,
+          year: year,
+          type: type,
+          medium: medium,
+          title: title,
+          url: pdfUrl,
+          pageUrl: paperUrl,
+          filename: `${type.toUpperCase()}_${subject}_${year}_govdoc`
+        };
+      }
+    }
+
+    return { found: false };
+  } catch (err) {
+    console.error("GovDoc search error:", err.message);
+    return { found: false };
+  }
+}
+
+// ==================== LIST ALL PAPERS BY YEAR ====================
 cmd({
-  pattern: "subjects",
-  alias: ["papers", "syllabus"],
-  react: "📖",
-  desc: "List available subjects for past papers",
-  category: "education",
-}, async (bot, mek, m, { reply, from }) => {
-  const subjectsList = `📚 *Available Subjects - A/L*
-
-🔬 *Science:*
-• physics, chemistry, biology, maths, applied-maths, agri, ict
-
-💼 *Commerce:*
-• accounting, business, econ, ict
-
-🎨 *Arts:*
-• sinhala, english, tamil, history, geography, civics, art, dance, music, drama
-
-📚 *Technology:*
-• eng-tech, bio-tech, info-tech, science-tech
-
----
-
-📚 *Available Subjects - O/L*
-
-🔬 *Core:*
-• maths, science, english, sinhala, tamil, religion, history
-
-📝 *Optional:*
-• geography, commerce, art, music, dance, drama, ict, agri, home-econ, health
-
----
-
-💡 *Usage:* \`.pastpaper <subject> <year> <al/ol>\`
-
-> _Vima-MD Education_`;
-
-  await reply(subjectsList);
-});
-
-// ==================== PAPER BY YEAR ====================
-cmd({
-  pattern: "papers",
-  alias: ["yearpapers", "allpapers"],
+  pattern: "allpapers",
+  alias: ["yearly", "papers"],
   react: "📅",
-  desc: "Get all papers for a specific year",
+  desc: "List all available papers for a specific year",
   category: "education",
 }, async (bot, mek, m, { q, reply, from }) => {
   try {
-    if (!q) return reply("❌ *Provide year and type!*\n\nExample: `.papers 2022 al`");
+    if (!q) return reply("❌ *Provide year and type!*\n\nExample: `.allpapers 2022 al`");
 
     const args = q.split(' ');
     const year = args[0];
@@ -182,45 +468,89 @@ cmd({
 
     await bot.sendMessage(from, { react: { text: "🔍", key: mek.key } });
 
-    const papers = await getPapersByYear(year, type);
+    // Search pastpapers.wiki for all subjects
+    const wikiUrl = `https://pastpapers.wiki/${year}-${type === 'al' ? 'a-l' : 'o-l'}-past-papers/`;
+    
+    let papersList = [];
+    
+    try {
+      const response = await axios.get(wikiUrl, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
 
-    if (papers.length === 0) {
-      return reply(`❌ *No papers found for ${year} ${type.toUpperCase()}*`);
+      const $ = cheerio.load(response.data);
+      
+      $('article h2 a, .entry-title a').each((i, elem) => {
+        const title = $(elem).text();
+        const link = $(elem).attr('href');
+        if (title && link && title.toLowerCase().includes(year)) {
+          papersList.push({
+            title: title,
+            link: link.startsWith('http') ? link : `https://pastpapers.wiki${link}`
+          });
+        }
+      });
+    } catch (e) {
+      console.log("All papers fetch error:", e.message);
     }
 
-    let text = `📅 *Past Papers - ${year} ${type.toUpperCase()}*\n\n`;
-    text += `Found ${papers.length} papers:\n\n`;
+    if (papersList.length === 0) {
+      // Fallback: provide manual links
+      return reply(`📅 *GCE ${type.toUpperCase()} Papers - ${year}*
 
-    papers.slice(0, 10).forEach((paper, index) => {
-      text += `${index + 1}. ${paper.subject}\n`;
-      text += `   📄 ${paper.title}\n`;
-      text += `   🔗 ${paper.url}\n\n`;
+🔗 *Visit these pages to download:*
+
+1️⃣ *pastpapers.wiki*
+https://pastpapers.wiki/${type}-level-past-papers/
+
+2️⃣ *e-kalvi.com*
+https://e-kalvi.com/${type}-level-past-papers/
+
+3️⃣ *govdoc.lk*
+https://govdoc.lk/category/past-papers/gce-${type === 'al' ? 'advance' : 'ordinary'}-level-exam/
+
+4️⃣ *paceinstitute.lk*
+https://www.paceinstitute.lk/pace-knowledge-society/past-papers/${type === 'al' ? 'advance' : 'ordinary'}-level.html [^27^][^36^]
+
+💡 *To download specific paper, use:*
+\`.paper <subject> ${year} ${type}\``);
+    }
+
+    let text = `📅 *GCE ${type.toUpperCase()} Papers - ${year}*\n\n`;
+    text += `Found ${papersList.length} papers:\n\n`;
+    
+    papersList.slice(0, 15).forEach((paper, index) => {
+      text += `${index + 1}. ${paper.title}\n`;
+      text += `   🔗 ${paper.link}\n\n`;
     });
 
-    if (papers.length > 10) {
-      text += `...and ${papers.length - 10} more papers\n`;
+    if (papersList.length > 15) {
+      text += `...and ${papersList.length - 15} more papers\n`;
     }
 
-    text += `\n> _Use .pastpaper <subject> ${year} ${type} to download_`;
+    text += `\n> _Use .paper <subject> ${year} ${type} for direct download_`;
 
     await reply(text);
     await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
 
   } catch (err) {
-    reply("❌ *Failed to fetch papers!*");
+    reply("❌ *Failed to fetch papers list!*");
   }
 });
 
 // ==================== MARKING SCHEME ====================
 cmd({
-  pattern: "marking",
-  alias: ["answers", "scheme", "ms"],
+  pattern: "markings",
+  alias: ["answers", "ms", "scheme"],
   react: "✅",
-  desc: "Download marking scheme for past paper",
+  desc: "Download marking schemes",
   category: "education",
 }, async (bot, mek, m, { q, reply, from }) => {
   try {
-    if (!q) return reply("❌ *Provide paper details!*\n\nExample: `.marking maths 2022 al`");
+    if (!q) return reply("❌ *Provide paper details!*\n\nExample: `.markings maths 2022 al`");
 
     const args = q.toLowerCase().trim().split(' ');
     const subject = args[0];
@@ -229,276 +559,215 @@ cmd({
 
     await bot.sendMessage(from, { react: { text: "🔍", key: mek.key } });
 
-    const markingScheme = await searchMarkingScheme(subject, year, type);
+    // Marking schemes are usually on same sites with "marking" or "answers" in URL
+    const searchUrls = [
+      `https://pastpapers.wiki/${type}-level-${subject}-${year}-marking-scheme/`,
+      `https://e-kalvi.com/${type}-level-${subject}-${year}-marking-scheme/`,
+      `https://govdoc.lk/${type}-level-${subject}-${year}-answers/`
+    ];
 
-    if (!markingScheme.found) {
-      return reply(`❌ *Marking scheme not found!*
+    let found = false;
+    let result = null;
 
-🔍 Searched: ${subject} ${year} ${type.toUpperCase()}
+    for (let url of searchUrls) {
+      try {
+        const response = await axios.get(url, {
+          timeout: 10000,
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          validateStatus: () => true
+        });
 
-💡 *Tips:*
-• Try different year
-• Some papers don't have published marking schemes
-• Check www.moe.gov.lk directly`);
+        if (response.status === 200) {
+          const $ = cheerio.load(response.data);
+          let pdfUrl = null;
+
+          $('a').each((i, elem) => {
+            const href = $(elem).attr('href');
+            if (href && href.includes('.pdf') && (href.includes('marking') || href.includes('answer'))) {
+              pdfUrl = href.startsWith('http') ? href : new URL(href, url).href;
+              return false;
+            }
+          });
+
+          if (pdfUrl) {
+            found = true;
+            result = {
+              url: pdfUrl,
+              pageUrl: url,
+              source: new URL(url).hostname
+            };
+            break;
+          }
+        }
+      } catch (e) {
+        continue;
+      }
     }
 
-    await bot.sendMessage(from, {
-      document: { url: markingScheme.url },
-      fileName: `${markingScheme.filename}.pdf`,
-      mimetype: "application/pdf",
-      caption: `✅ *Marking Scheme*
+    if (!found) {
+      return reply(`❌ *Marking scheme not found online!*
 
-📖 ${markingScheme.title}
-📅 Year: ${markingScheme.year}
-🏫 Type: ${markingScheme.type.toUpperCase()}
+🔍 *Searched:* ${subject} ${year} ${type.toUpperCase()}
+
+💡 *Try:*
+• Check \`.paper ${subject} ${year} ${type}\` - some papers include answers
+• Visit: https://www.doenets.lk (Department of Examinations) [^34^]
+• Buy official marking scheme books from bookshops`);
+    }
+
+    await reply(`✅ *Marking Scheme Found!*
+
+📖 Subject: ${subject}
+📅 Year: ${year}
+🏫 Type: ${type.toUpperCase()}
+🌐 Source: ${result.source}
+
+⏳ Downloading...`);
+
+    // Try to download
+    try {
+      const headResponse = await axios.head(result.url, { timeout: 10000 });
+      const sizeMB = headResponse.headers['content-length'] ? 
+        (headResponse.headers['content-length'] / 1024 / 1024).toFixed(2) : 'Unknown';
+
+      if (headResponse.headers['content-length'] && headResponse.headers['content-length'] > 45 * 1024 * 1024) {
+        await reply(`⚠️ *File too large (${sizeMB} MB)*
+
+📥 *Download manually:*
+${result.url}`);
+      } else {
+        const response = await axios.get(result.url, {
+          responseType: 'arraybuffer',
+          timeout: 60000,
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+
+        const fs = require('fs');
+        const path = require('path');
+        const tempFile = path.join('/tmp', `marking_${Date.now()}.pdf`);
+        fs.writeFileSync(tempFile, response.data);
+
+        await bot.sendMessage(from, {
+          document: { url: tempFile },
+          fileName: `${type.toUpperCase()}_${subject}_${year}_MarkingScheme.pdf`,
+          mimetype: "application/pdf",
+          caption: `✅ *Marking Scheme*
+
+📖 ${subject} ${year}
+🏫 GCE ${type.toUpperCase()}
+🌐 ${result.source}
 
 > _Vima-MD Education_`
-    }, { quoted: mek });
+        }, { quoted: mek });
 
-    await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+        fs.unlinkSync(tempFile);
+      }
+
+      await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+
+    } catch (err) {
+      await reply(`⚠️ *Download failed!*
+
+🔗 *Manual download:*
+${result.url}`);
+    }
 
   } catch (err) {
-    reply("❌ *Failed to download marking scheme!*");
+    reply("❌ *Failed to search marking scheme!*");
   }
 });
 
-// ==================== MODEL PAPERS ====================
+// ==================== SUBJECTS LIST ====================
 cmd({
-  pattern: "model",
-  alias: ["modelpaper", "mock"],
-  react: "📝",
-  desc: "Get model papers for subjects",
+  pattern: "subjects",
+  alias: ["subjectlist", "paperslist"],
+  react: "📖",
+  desc: "List all available subjects",
   category: "education",
-}, async (bot, mek, m, { q, reply, from }) => {
-  try {
-    if (!q) return reply("❌ *Provide subject!*\n\nExample: `.model maths al`");
+}, async (bot, mek, m, { reply, from }) => {
+  const subjectsList = `📚 *Available Subjects - GCE A/L*
 
-    const args = q.split(' ');
-    const subject = args[0];
-    const type = args[1] || 'al';
+🔬 *Science Stream:*
+• combined-maths (maths)
+• physics
+• chemistry
+• biology (bio)
+• ict / git
+• agriculture (agri)
 
-    await bot.sendMessage(from, { react: { text: "📝", key: mek.key } });
+💼 *Commerce Stream:*
+• economics (econ)
+• business-studies (bs)
+• accounting (acc)
 
-    const models = await getModelPapers(subject, type);
+🎨 *Arts Stream:*
+• sinhala / tamil / english
+• history / geography (geo)
+• art / music / dance / drama
 
-    if (models.length === 0) {
-      return reply(`❌ *No model papers found for ${subject}*`);
-    }
+🔧 *Technology Stream:*
+• engineering-technology (et)
+• bio-technology (bt)
+• science-technology (st)
 
-    let text = `📝 *Model Papers - ${subject.toUpperCase()} ${type.toUpperCase()}*\n\n`;
+---
 
-    models.slice(0, 5).forEach((paper, index) => {
-      text += `${index + 1}. ${paper.title}\n`;
-      text += `   📅 ${paper.year || 'N/A'}\n`;
-      text += `   🏫 ${paper.institution || 'Unknown'}\n`;
-      text += `   🔗 Use: .pastpaper ${subject} ${paper.year || '2023'} ${type}\n\n`;
-    });
+📚 *GCE O/L Subjects:*
+• maths / science / english / sinhala / tamil
+• history / geography / ict
+• commerce / art / music / drama
+• health / home-economics / agriculture
 
-    await reply(text + `> _Vima-MD Model Papers_`);
-    await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+---
 
-  } catch (err) {
-    reply("❌ *Failed to fetch model papers!*");
-  }
+💡 *Usage Examples:*
+\`.paper maths 2022 al\`
+\`.paper physics 2021 ol sinhala\`
+\`.markings chemistry 2020 al\`
+\`.allpapers 2022 al\`
+
+> _Vima-MD Education Bot_`;
+
+  await reply(subjectsList);
 });
 
-// ==================== HELPER FUNCTIONS ====================
+// ==================== HELP COMMAND ====================
+cmd({
+  pattern: "education",
+  alias: ["eduhelp", "papershelp"],
+  react: "🎓",
+  desc: "Education system help",
+  category: "education",
+}, async (bot, mek, m, { reply, from }) => {
+  const helpText = `🎓 *Vima-MD Education System*
 
-async function searchPastPaper(subject, year, type) {
-  // This is a mock function - in production, scrape from real sites
-  
-  const subjectMap = {
-    'maths': 'mathematics',
-    'math': 'mathematics',
-    'physics': 'physics',
-    'chemistry': 'chemistry',
-    'bio': 'biology',
-    'biology': 'biology',
-    'ict': 'information-technology',
-    'it': 'information-technology',
-    'econ': 'economics',
-    'economics': 'economics',
-    'business': 'business-studies',
-    'bs': 'business-studies',
-    'accounting': 'accounting',
-    'acc': 'accounting',
-    'sinhala': 'sinhala',
-    'english': 'english',
-    'tamil': 'tamil',
-    'history': 'history',
-    'geography': 'geography',
-    'geo': 'geography',
-    'agri': 'agriculture',
-    'agriculture': 'agriculture',
-    'dt': 'design-technology',
-    'et': 'engineering-technology',
-    'bt': 'bio-technology'
-  };
+📚 *Commands:*
 
-  const fullSubject = subjectMap[subject] || subject;
-  
-  // Mock database of papers
-  const mockPapers = {
-    'mathematics': {
-      '2022': {
-        'al': {
-          found: true,
-          subject: 'Mathematics',
-          year: '2022',
-          type: 'al',
-          medium: 'English/Sinhala',
-          title: 'GCE A/L Mathematics 2022',
-          filename: 'AL_Maths_2022',
-          url: 'https://www.pastpapers.wiki/download/a-level-mathematics-2022/',
-          size: 2500000
-        }
-      }
-    },
-    'physics': {
-      '2022': {
-        'al': {
-          found: true,
-          subject: 'Physics',
-          year: '2022',
-          type: 'al',
-          medium: 'English',
-          title: 'GCE A/L Physics 2022',
-          filename: 'AL_Physics_2022',
-          url: 'https://www.pastpapers.wiki/download/a-level-physics-2022/',
-          size: 3200000
-        }
-      }
-    },
-    'chemistry': {
-      '2022': {
-        'al': {
-          found: true,
-          subject: 'Chemistry',
-          year: '2022',
-          type: 'al',
-          medium: 'English/Sinhala',
-          title: 'GCE A/L Chemistry 2022',
-          filename: 'AL_Chemistry_2022',
-          url: 'https://www.pastpapers.wiki/download/a-level-chemistry-2022/',
-          size: 2800000
-        }
-      }
-    },
-    'biology': {
-      '2022': {
-        'al': {
-          found: true,
-          subject: 'Biology',
-          year: '2022',
-          type: 'al',
-          medium: 'English',
-          title: 'GCE A/L Biology 2022',
-          filename: 'AL_Bio_2022',
-          url: 'https://www.pastpapers.wiki/download/a-level-biology-2022/',
-          size: 4500000
-        }
-      }
-    }
-  };
+1️⃣ *\`.paper <subject> <year> <al/ol> [medium]\`* - Download past paper
+   Example: \`.paper maths 2022 al\`
 
-  // Check if we have this paper in mock DB
-  if (mockPapers[fullSubject] && mockPapers[fullSubject][year] && mockPapers[fullSubject][year][type]) {
-    return mockPapers[fullSubject][year][type];
-  }
+2️⃣ *\`.allpapers <year> <al/ol>\`* - List all papers for year
+   Example: \`.allpapers 2022 al\`
 
-  // Try to scrape from real sources
-  return await scrapeRealPaper(fullSubject, year, type);
-}
+3️⃣ *\`.markings <subject> <year> <al/ol>\`* - Download marking scheme
+   Example: \`.markings physics 2022 al\`
 
-async function scrapeRealPaper(subject, year, type) {
-  try {
-    // Try pastpapers.wiki
-    const wikiUrl = `https://www.pastpapers.wiki/${type}-level-${subject}-${year}-past-paper/`;
-    const response = await axios.get(wikiUrl, {
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    }).catch(() => null);
+4️⃣ *\`.subjects\`* - List all available subjects
 
-    if (response && response.status === 200) {
-      const $ = cheerio.load(response.data);
-      const pdfLink = $('a[href$=".pdf"]').first().attr('href');
-      
-      if (pdfLink) {
-        return {
-          found: true,
-          subject: subject,
-          year: year,
-          type: type,
-          title: `GCE ${type.toUpperCase()} ${subject} ${year}`,
-          filename: `${type.toUpperCase()}_${subject}_${year}`,
-          url: pdfLink.startsWith('http') ? pdfLink : `https://www.pastpapers.wiki${pdfLink}`,
-          medium: 'Mixed'
-        };
-      }
-    }
+5️⃣ *\`.education\`* - Show this help
 
-    // Try e-thaksalawa
-    const thaksalawaUrl = `https://www.e-thaksalawa.moe.gov.lk/${type}/${subject}/${year}`;
-    // ... similar scraping logic
+---
 
-    return { found: false };
-  } catch (err) {
-    console.error("Scrape Error:", err);
-    return { found: false };
-  }
-}
+🌐 *Real Sources Used:*
+• pastpapers.wiki - Largest collection [^31^]
+• e-kalvi.com - Free downloads [^21^]
+• govdoc.lk - Government papers [^25^]
+• e-thaksalawa.moe.gov.lk - Official (requires login) [^32^]
+• paceinstitute.lk - Model papers [^27^]
 
-async function searchAlternativeSources(subject, year, type) {
-  const alternatives = [];
-  
-  // Search nearby years
-  for (let y = parseInt(year) - 2; y <= parseInt(year) + 2; y++) {
-    if (y.toString() === year) continue;
-    const result = await searchPastPaper(subject, y.toString(), type);
-    if (result.found) {
-      alternatives.push(result);
-    }
-  }
-  
-  return alternatives;
-}
+⚠️ *Note:* Some papers may require manual download due to website restrictions or large file sizes.
 
-async function searchMarkingScheme(subject, year, type) {
-  // Similar to searchPastPaper but for marking schemes
-  const markingData = {
-    found: true,
-    subject: subject,
-    year: year,
-    type: type,
-    title: `GCE ${type.toUpperCase()} ${subject} ${year} - Marking Scheme`,
-    filename: `${type.toUpperCase()}_${subject}_${year}_MS`,
-    url: `https://www.pastpapers.wiki/marking-scheme-${type}-level-${subject}-${year}/`
-  };
-  
-  return markingData;
-}
+> _Powered by Vima-MD Education Bot_`;
 
-async function getPapersByYear(year, type) {
-  const papers = [];
-  const subjects = ['mathematics', 'physics', 'chemistry', 'biology', 'ict', 'economics', 'business-studies', 'accounting'];
-  
-  for (let subject of subjects) {
-    const result = await searchPastPaper(subject, year, type);
-    if (result.found) {
-      papers.push(result);
-    }
-  }
-  
-  return papers;
-}
-
-async function getModelPapers(subject, type) {
-  // Return mock model papers
-  return [
-    { title: `${subject} Model Paper 1`, institution: 'Royal College', year: '2023' },
-    { title: `${subject} Model Paper 2`, institution: 'Ananda College', year: '2023' },
-    { title: `${subject} Model Paper 3`, institution: 'Visakha Vidyalaya', year: '2022' }
-  ];
-                }
+  await reply(helpText);
+});
