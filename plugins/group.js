@@ -37,36 +37,52 @@ cmd({
 });
 
 cmd({
-  pattern: "tagall",
-  react: "📢",
-  desc: "Tag all group members",
+  pattern: "hidetag",
+  alias: ["ht"],
+  react: "👥",
+  desc: "Hidden tag with media support",
   category: "group",
   filename: __filename,
-}, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants }) => {
-  if (!isGroup) return reply("*This command can only be used in groups.*");
-  if (!isAdmins) return reply("*Only group admins can use this command.*");
+}, async (conn, m, mek, { isGroup, isAdmins, reply, participants, args, quoted }) => {
 
-  let validParticipants = participants.filter(p => {
-    const number = p.id.split("@")[0];
-    return /^\d{9,15}$/.test(number);
-  });
+  if (!isGroup) return reply("*Group only*");
+  if (!isAdmins) return reply("*Admins only*");
 
-  if (validParticipants.length === 0) {
-    return reply("*No valid phone numbers found to tag.*");
+  let mentions = participants.map(p => p.id);
+  let text = args.join(" ") || "‎";
+
+  try {
+    if (quoted) {
+      let media = await downloadMediaMessage(quoted, "buffer");
+
+      let type = Object.keys(quoted.message)[0];
+
+      if (type === "imageMessage") {
+        return await conn.sendMessage(m.chat, {
+          image: media,
+          caption: text,
+          mentions
+        }, { quoted: m });
+      }
+
+      if (type === "videoMessage") {
+        return await conn.sendMessage(m.chat, {
+          video: media,
+          caption: text,
+          mentions
+        }, { quoted: m });
+      }
+    }
+
+    await conn.sendMessage(m.chat, {
+      text,
+      mentions
+    }, { quoted: m });
+
+  } catch (e) {
+    console.error(e);
+    reply("❌ Hidetag error");
   }
-
-  let mentions = validParticipants.map(p => p.id);
-
-  let text = "*Attention everyone:*\n";
-
-  let displayNumbers = validParticipants.map(p => {
-    const number = p.id.split("@")[0];
-    return `@+${number}`;
-  });
-
-  text += displayNumbers.join(" ");
-
-  return reply(text, { mentions });
 });
 
 cmd({
