@@ -143,8 +143,8 @@ ${menu.group}
 🎮 FUN
 ${menu.fun}
 
-📌 OTHER
-${menu.other}
+📌 Owner
+${menu.owner}
 
 ╔════════════════════╗
 > *𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗩𝗜𝗠𝗔-𝗠𝗗 𝗩 1 💐💙*
