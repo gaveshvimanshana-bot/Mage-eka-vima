@@ -13,22 +13,24 @@ cmd(
   async (sock, mek, m, { from, q, reply }) => {
     try {
 
-      if (!q) return reply("❌ මට question එකක් දෙන්න!");
+      if (!q) return reply("❌ Question ekak danna!");
 
-      reply("🤖 Thinking... please wait");
+      reply("🤖 Thinking...");
 
-      // FREE AI API (no key needed)
-      const res = await axios.get("https://api.affiliateplus.xyz/api/chatbot", {
-        params: {
-          message: q,
-          botname: "VIMA AI",
-          ownername: "VIMA"
+      // 🔥 STABLE FREE AI API
+      const res = await axios.get(
+        "https://api.simsimi.net/v2/",
+        {
+          params: {
+            text: q,
+            lc: "en"
+          }
         }
-      });
+      );
 
-      const answer = res.data.message;
+      const answer = res.data.success;
 
-      if (!answer) return reply("❌ AI response නැහැ!");
+      if (!answer) return reply("❌ AI response not found!");
 
       await sock.sendMessage(from, {
         text: `
@@ -36,8 +38,8 @@ cmd(
 
 ${answer}
 
-━━━━━━━━━━━━━━
-⚡ VIMA-MD AI BOT
+━━━━━━━━━━━━
+⚡ VIMA-MD AI
         `
       }, { quoted: mek });
 
