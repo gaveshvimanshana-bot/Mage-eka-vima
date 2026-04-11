@@ -11,7 +11,7 @@ cmd({
     pattern: "forward",
     alias: ["fwd"],
     desc: "Forward replied message to group",
-    category: "owner",
+    category: "ai",
     react: "📤",
     filename: __filename
 }, async (conn, mek, m, { sender, args, quoted, reply }) => {
