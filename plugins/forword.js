@@ -1,6 +1,5 @@
 const { cmd } = require("../command");
 
-// 👉 OWNER NUMBER (change this)
 const OWNER_NUMBER = "94742838159@s.whatsapp.net";
 
 function isOwner(sender) {
@@ -10,36 +9,40 @@ function isOwner(sender) {
 cmd({
     pattern: "forward",
     alias: ["fwd"],
-    desc: "Forward replied message to group",
+    desc: "Forward replied message to group (fixed)",
     category: "ai",
     react: "📤",
     filename: __filename
 }, async (conn, mek, m, { sender, args, quoted, reply }) => {
 
-    // 🔐 owner check
     if (!isOwner(sender)) return reply("❌ You are not owner!");
 
-    // 📌 target group jid
     const target = args[0];
     if (!target) {
         return reply("❌ Usage:\n.forward <groupJID>\nExample:\n.forward 120363407256800127@g.us");
     }
 
-    // 📌 must reply message
-    if (!quoted) {
-        return reply("❌ Reply to a message to forward!");
-    }
+    if (!quoted) return reply("❌ Reply to a message first!");
 
     try {
 
-        // 📤 forward message
-        const msg = await conn.copyNForward(target, quoted, true);
+        // 🔥 IMPORTANT FIX: always get raw message
+        const msg = mek.message.extendedTextMessage?.contextInfo?.quotedMessage;
 
-        reply("✅ Message forwarded successfully!");
+        if (!msg) return reply("❌ Can't find quoted message!");
 
-    } catch (e) {
-        console.log(e);
-        reply("❌ Error while forwarding message!");
+        // ✅ proper forward
+        await conn.relayMessage(
+            target,
+            msg,
+            { messageId: quoted.key?.id }
+        );
+
+        reply("✅ Forwarded successfully!");
+
+    } catch (err) {
+        console.log(err);
+        reply("❌ Forward failed! Check console.");
     }
 });
 
