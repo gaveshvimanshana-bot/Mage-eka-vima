@@ -36,55 +36,45 @@ cmd({
   return reply(`*Kicked:* @${target.split("@")[0]}`, { mentions: [target] });
 });
 
+const { cmd } = require("../command");
+
 cmd({
-  pattern: "hidetag",
-  alias: ["ht"],
-  react: "👥",
-  desc: "Hidden tag with media support",
+  pattern: "tagall",
+  desc: "Mention all members",
   category: "group",
-  filename: __filename,
-}, async (conn, m, mek, { isGroup, isAdmins, reply, participants, args, quoted }) => {
+  react: "📢",
+  filename: __filename
+},
+async (conn, m, mek, { from, isGroup, participants, reply }) => {
 
-  if (!isGroup) return reply("*Group only*");
-  if (!isAdmins) return reply("*Admins only*");
-
-  let mentions = participants.map(p => p.id);
-  let text = args.join(" ") || "‎";
+  if (!isGroup) return reply("❌ This command only for groups!");
 
   try {
-    if (quoted) {
-      let media = await downloadMediaMessage(quoted, "buffer");
+    let text = "📢 *ATTENTION EVERYONE*\n\n";
+    let mentions = [];
 
-      let type = Object.keys(quoted.message)[0];
+    let valid = participants.filter(p => {
+      let num = p.id.split("@")[0];
+      return /^\d{9,15}$/.test(num); // only real numbers
+    });
 
-      if (type === "imageMessage") {
-        return await conn.sendMessage(m.chat, {
-          image: media,
-          caption: text,
-          mentions
-        }, { quoted: m });
-      }
-
-      if (type === "videoMessage") {
-        return await conn.sendMessage(m.chat, {
-          video: media,
-          caption: text,
-          mentions
-        }, { quoted: m });
-      }
+    for (let member of valid) {
+      let num = member.id.split("@")[0];
+      text += `👤 @${num}\n`;
+      mentions.push(member.id);
     }
 
-    await conn.sendMessage(m.chat, {
+    await conn.sendMessage(from, {
       text,
       mentions
     }, { quoted: m });
 
   } catch (e) {
-    console.error(e);
-    reply("❌ Hidetag error");
+    console.log(e);
+    reply("❌ Error tagging all!");
   }
-});
 
+});
 cmd({
   pattern: "setpp",
   desc: "Set group profile picture",
