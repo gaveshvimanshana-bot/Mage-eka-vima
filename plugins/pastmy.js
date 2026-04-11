@@ -1,46 +1,77 @@
 const { cmd } = require("../command");
-const axios = require("axios");
+const https = require("https");
 
 cmd({
   pattern: "pa",
-  desc: "Download Past Papers",
+  desc: "Download Past Papers (Grade System)",
   category: "ai",
-  react: "🫟",
+  react: "📄",
   filename: __filename
 },
 async (conn, mek, m, { from, args, reply }) => {
 
+  // 🔥 Grade + Subject system
   const papers = {
-    science: "https://drive.google.com/uc?export=download&id=1g0CELfSKuKAp9lXGSrCACKs5BJcSUvgA&confirm=t"
+    "10science": "https://drive.google.com/uc?export=download&id=1g0CELfSKuKAp9lXGSrCACKs5BJcSUvgA&confirm=t",
+    "10maths": "YOUR_LINK_HERE",
+    "10ict": "YOUR_LINK_HERE",
+
+    "11science": "YOUR_LINK_HERE",
+    "11maths": "YOUR_LINK_HERE",
+    "11ict": "YOUR_LINK_HERE",
+
+    "olscience": "YOUR_LINK_HERE",
+    "olmaths": "YOUR_LINK_HERE"
   };
 
-  let subject = args[0]?.toLowerCase();
+  let grade = args[0];
+  let subject = args[1];
 
-  if (!subject) return reply("📚 Use: .pa science");
-  if (!papers[subject]) return reply("❌ Not found!");
+  if (!grade || !subject) {
+    return reply(`📚 Use like:
+
+.pa 10 science
+.pa 11 maths
+.pa ol science`);
+  }
+
+  let key = (grade + subject).toLowerCase();
+
+  if (!papers[key]) {
+    return reply("❌ Not found!\nTry: 10 science / 11 maths / ol science");
+  }
 
   try {
 
-    await reply("⏳ Sending file...");
+    await reply("⏳ Downloading paper...");
 
-    const res = await axios({
-      method: "GET",
-      url: papers[subject],
-      responseType: "arraybuffer"
+    https.get(papers[key], (res) => {
+
+      let data = [];
+
+      res.on("data", (chunk) => data.push(chunk));
+
+      res.on("end", async () => {
+
+        const buffer = Buffer.concat(data);
+
+        await conn.sendMessage(from, {
+          document: buffer,
+          mimetype: "application/pdf",
+          fileName: `${grade}_${subject}.pdf`,
+          caption: `📚 ${grade.toUpperCase()} ${subject.toUpperCase()} Past Paper`
+        }, { quoted: mek });
+
+      });
+
+    }).on("error", (err) => {
+      console.log(err);
+      reply("❌ Download error!");
     });
 
-    const buffer = Buffer.from(res.data);
-
-    await conn.sendMessage(from, {
-      document: buffer,
-      mimetype: "application/pdf",
-      fileName: `${subject}.pdf`,
-      caption: `📚 ${subject.toUpperCase()} Past Paper`
-    }, { quoted: mek });
-
   } catch (e) {
-    console.log("ERROR:", e.message);
-    reply("❌ Failed to download file. Drive link block wenna puluwan.");
+    console.log(e);
+    reply("❌ Failed!");
   }
 
 });
