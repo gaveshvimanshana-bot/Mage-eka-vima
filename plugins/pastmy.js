@@ -12,7 +12,7 @@ async (conn, mek, m, { from, args, reply }) => {
 
   // 🔥 Grade + Subject system
   const papers = {
-    "10science": "https://drive.google.com/uc?export=download&id=1g0CELfSKuKAp9lXGSrCACKs5BJcSUvgA&confirm=t",
+    "10science": "https://drive.google.com/file/d/1g0CELfSKuKAp9lXGSrCACKs5BJcSUvgA/view?usp=drivesdk",
     "10maths": "YOUR_LINK_HERE",
     "10ict": "YOUR_LINK_HERE",
 
