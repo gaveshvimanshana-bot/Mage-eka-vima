@@ -44,7 +44,7 @@ cmd({
 }, async (conn, mek, m, { from, reply }) => {
     try {
         const start = Date.now();
-        const m1 = await conn.sendMessage(from, { text: 'Pinging...' });
+        const m1 = await conn.sendMessage(from, { text: 'ⱽⁱᵐᵃPinging...' });
         const ping = Date.now() - start;
 
         await conn.sendMessage(from, {
