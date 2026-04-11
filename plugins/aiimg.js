@@ -19,16 +19,10 @@ async (conn, mek, m, { from, args }) => {
 
   try {
 
-    const res = await axios.post("https://es24.in/art/dev_api.php", {
-      prompt: prompt,
-      style: 1, // 1=real, 2=anime, 3=3D, 4=cyberpunk
-      ratio: "1:1"
-    });
-
-    const img = res.data.image || res.data.url;
+    const url = `https://api.nekorinn.my.id/ai-image?prompt=${encodeURIComponent(prompt)}`;
 
     await conn.sendMessage(from, {
-      image: { url: img },
+      image: { url: url },
       caption: `🎨 *AI Image Generated*\n\n📝 Prompt: ${prompt}`
     }, { quoted: mek });
 
