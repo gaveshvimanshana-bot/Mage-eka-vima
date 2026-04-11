@@ -2,10 +2,10 @@ const { cmd } = require("../command");
 const axios = require("axios");
 
 cmd({
-  pattern: "pastpaper",
+  pattern: "pa",
   desc: "Download Past Papers",
-  category: "education",
-  react: "📄",
+  category: "ai",
+  react: "🫟",
   filename: __filename
 },
 async (conn, mek, m, { from, args, reply }) => {
