@@ -1,4 +1,3 @@
-
 const { cmd } = require("../command");
 const { getGroupAdmins } = require("../lib/functions");
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
@@ -36,45 +35,39 @@ cmd({
   return reply(`*Kicked:* @${target.split("@")[0]}`, { mentions: [target] });
 });
 
-const { cmd } = require("../command");
-
 cmd({
   pattern: "tagall",
-  desc: "Mention all members",
-  category: "group",
   react: "📢",
-  filename: __filename
-},
-async (conn, m, mek, { from, isGroup, participants, reply }) => {
+  desc: "Tag all group members",
+  category: "group",
+  filename: __filename,
+}, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants }) => {
+  if (!isGroup) return reply("*This command can only be used in groups.*");
+  if (!isAdmins) return reply("*Only group admins can use this command.*");
 
-  if (!isGroup) return reply("❌ This command only for groups!");
+  let validParticipants = participants.filter(p => {
+    const number = p.id.split("@")[0];
+    return /^\d{9,15}$/.test(number);
+  });
 
-  try {
-    let text = "📢 *ATTENTION EVERYONE*\n\n";
-    let mentions = [];
-
-    let valid = participants.filter(p => {
-      let num = p.id.split("@")[0];
-      return /^\d{9,15}$/.test(num); // only real numbers
-    });
-
-    for (let member of valid) {
-      let num = member.id.split("@")[0];
-      text += `👤 @${num}\n`;
-      mentions.push(member.id);
-    }
-
-    await conn.sendMessage(from, {
-      text,
-      mentions
-    }, { quoted: m });
-
-  } catch (e) {
-    console.log(e);
-    reply("❌ Error tagging all!");
+  if (validParticipants.length === 0) {
+    return reply("*No valid phone numbers found to tag.*");
   }
 
+  let mentions = validParticipants.map(p => p.id);
+
+  let text = "*Attention everyone:*\n";
+
+  let displayNumbers = validParticipants.map(p => {
+    const number = p.id.split("@")[0];
+    return `@+${number}`;
+  });
+
+  text += displayNumbers.join(" ");
+
+  return reply(text, { mentions });
 });
+
 cmd({
   pattern: "setpp",
   desc: "Set group profile picture",
