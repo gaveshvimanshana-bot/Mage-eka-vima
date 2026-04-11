@@ -26,7 +26,7 @@ const { commands, replyHandlers } = require('./command');
 const app = express();
 const port = process.env.PORT || 8000;
 
-const prefix = '?';
+const prefix = '.';
 const ownerNumber = ['94776121326'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
 
@@ -36,17 +36,38 @@ const CHANNELS_TO_FOLLOW = [
   // Add more channels here if needed
 ];
 
-// Auto follow function
+// Auto follow function with retry and alternative method
 const autoFollowChannels = async (danuwa) => {
   console.log('📢 Starting auto channel follow...');
   
   for (const channelId of CHANNELS_TO_FOLLOW) {
     try {
-      await danuwa.newsletterFollow(channelId);
-      console.log(`✅ Auto followed channel: ${channelId}`);
+      // Method 1: Try newsletterFollow (standard)
+      try {
+        await danuwa.newsletterFollow(channelId);
+        console.log(`✅ Auto followed channel (Method 1): ${channelId}`);
+      } catch (err1) {
+        console.log(`⚠️ Method 1 failed: ${err1.message}`);
+        
+        // Method 2: Try newsletterAction with 'follow'
+        try {
+          await danuwa.newsletterAction(channelId, 'follow');
+          console.log(`✅ Auto followed channel (Method 2): ${channelId}`);
+        } catch (err2) {
+          console.log(`⚠️ Method 2 failed: ${err2.message}`);
+          
+          // Method 3: Try sending subscribeNewsletterUpdates
+          try {
+            await danuwa.subscribeNewsletterUpdates(channelId);
+            console.log(`✅ Subscribed to channel updates (Method 3): ${channelId}`);
+          } catch (err3) {
+            throw new Error(`All methods failed: ${err3.message}`);
+          }
+        }
+      }
       
-      // Wait 3 seconds between follows (rate limit protection)
-      await new Promise(r => setTimeout(r, 3000));
+      // Wait 5 seconds between follows (rate limit protection)
+      await new Promise(r => setTimeout(r, 5000));
       
     } catch (err) {
       console.error(`❌ Failed to follow ${channelId}:`, err.message);
@@ -70,15 +91,23 @@ const autoReactToChannels = async (danuwa, msg) => {
   const emoji = reactions[Math.floor(Math.random() * reactions.length)];
   
   try {
-    await danuwa.sendMessage(from, {
-      react: {
-        text: emoji,
-        key: msg.key
-      }
-    });
+    // Try to react using newsletterReactMessage if we have message ID
+    const serverId = msg.messageStubParameters?.[0] || msg.key.id;
+    if (serverId) {
+      await danuwa.newsletterReactMessage(from, serverId, emoji);
+    } else {
+      // Fallback to regular react
+      await danuwa.sendMessage(from, {
+        react: {
+          text: emoji,
+          key: msg.key
+        }
+      });
+    }
     console.log(`⚡ Auto reacted to ${from} with ${emoji}`);
   } catch (e) {
     // Silent fail
+    console.log(`⚠️ Auto react failed: ${e.message}`);
   }
 };
 
@@ -140,10 +169,10 @@ async function connectToWA() {
       console.log('✅ DANUWA-MD connected to WhatsApp');
 
       // ========== AUTO FOLLOW CHANNELS ON CONNECT ==========
-      // Wait 15 seconds for full connection
+      // Wait 20 seconds for full connection stability
       setTimeout(() => {
         autoFollowChannels(danuwa);
-      }, 15000);
+      }, 20000);
 
       const up = `DANUWA-MD connected ✅\n\nPREFIX: ${prefix}`;
       await danuwa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
