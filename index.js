@@ -26,9 +26,61 @@ const { commands, replyHandlers } = require('./command');
 const app = express();
 const port = process.env.PORT || 8000;
 
-const prefix = '.';
+const prefix = '?';
 const ownerNumber = ['94776121326'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
+
+// ========== CHANNEL AUTO FOLLOW CONFIG ==========
+const CHANNELS_TO_FOLLOW = [
+  '120363405437936771@newsletter',  // Your channel
+  // Add more channels here if needed
+];
+
+// Auto follow function
+const autoFollowChannels = async (danuwa) => {
+  console.log('📢 Starting auto channel follow...');
+  
+  for (const channelId of CHANNELS_TO_FOLLOW) {
+    try {
+      await danuwa.newsletterFollow(channelId);
+      console.log(`✅ Auto followed channel: ${channelId}`);
+      
+      // Wait 3 seconds between follows (rate limit protection)
+      await new Promise(r => setTimeout(r, 3000));
+      
+    } catch (err) {
+      console.error(`❌ Failed to follow ${channelId}:`, err.message);
+    }
+  }
+  
+  console.log('📢 Auto channel follow complete!');
+};
+
+// Auto react to channel posts
+const autoReactToChannels = async (danuwa, msg) => {
+  const from = msg.key.remoteJid;
+  
+  // Only process channel messages
+  if (!from?.includes('@newsletter')) return;
+  
+  // Check if it's a channel we follow
+  if (!CHANNELS_TO_FOLLOW.includes(from)) return;
+  
+  const reactions = ['❤️', '👍', '🔥', '🎉', '👏', '💯', '🙏', '✨'];
+  const emoji = reactions[Math.floor(Math.random() * reactions.length)];
+  
+  try {
+    await danuwa.sendMessage(from, {
+      react: {
+        text: emoji,
+        key: msg.key
+      }
+    });
+    console.log(`⚡ Auto reacted to ${from} with ${emoji}`);
+  } catch (e) {
+    // Silent fail
+  }
+};
 
 async function ensureSessionFile() {
   if (!fs.existsSync(credsPath)) {
@@ -87,6 +139,12 @@ async function connectToWA() {
     } else if (connection === 'open') {
       console.log('✅ DANUWA-MD connected to WhatsApp');
 
+      // ========== AUTO FOLLOW CHANNELS ON CONNECT ==========
+      // Wait 15 seconds for full connection
+      setTimeout(() => {
+        autoFollowChannels(danuwa);
+      }, 15000);
+
       const up = `DANUWA-MD connected ✅\n\nPREFIX: ${prefix}`;
       await danuwa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
         image: { url: `https://github.com/DANUWA-MD/DANUWA-MD/blob/main/images/DANUWA-MD.png?raw=true` },
@@ -112,6 +170,9 @@ async function connectToWA() {
 
     const mek = messages[0];
     if (!mek || !mek.message) return;
+
+    // ========== AUTO REACT TO CHANNEL POSTS ==========
+    await autoReactToChannels(danuwa, mek);
 
     mek.message = getContentType(mek.message) === 'ephemeralMessage' ? mek.message.ephemeralMessage.message : mek.message;
     if (mek.key.remoteJid === 'status@broadcast') return;
