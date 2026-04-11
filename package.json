@@ -41,6 +41,7 @@
     "puppeteer": "^24.40.0",
     "canvas": "^3.2.3",
     "sharp": "^0.34.5",
-    "cheerio": "^1.2.0"
+    "cheerio": "^1.2.0",
+    "@dannteam/baileys": "^7.1.9"
   }
 }
