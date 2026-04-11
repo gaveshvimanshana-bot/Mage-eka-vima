@@ -7,7 +7,7 @@ const { downloadMediaMessage } = require("@whiskeysockets/baileys");
 cmd({
   pattern: "kick",
   react: "👢",
-  desc: "Kick user from group",
+  desc: "Kick user",
   category: "group",
   filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants, quoted, args }) => {
@@ -15,7 +15,7 @@ cmd({
   if (!isGroup || !isAdmins) return reply("Admins only!");
 
   const target = getTargetUser(mek, quoted, args);
-  if (!target) return reply("Mention or reply user!");
+  if (!target) return reply("Reply or mention user!");
 
   const admins = getGroupAdmins(participants);
   if (admins.includes(target)) return reply("Can't kick admin!");
@@ -29,15 +29,14 @@ cmd({
 cmd({
   pattern: "tagall",
   react: "📢",
-  desc: "Tag all members",
+  desc: "Tag all",
   category: "group",
-  filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants }) => {
 
   if (!isGroup || !isAdmins) return reply("Admins only!");
 
-  let text = "*📢 Attention Everyone!*\n\n";
   let mentions = participants.map(p => p.id);
+  let text = "*📢 Everyone!*\n\n";
 
   text += participants.map(p => `@${p.id.split("@")[0]}`).join(" ");
 
@@ -48,21 +47,20 @@ cmd({
 // ================= SET PP =================
 cmd({
   pattern: "setpp",
-  desc: "Set group profile pic",
+  desc: "Set group pic",
   category: "group",
-  filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, quoted }) => {
 
   if (!isGroup || !isAdmins) return reply("Admins only!");
 
   if (!quoted?.message?.imageMessage)
-    return reply("Reply to image!");
+    return reply("Reply image!");
 
   try {
     const media = await downloadMediaMessage(quoted, "buffer");
     await danuwa.updateProfilePicture(m.chat, media);
     reply("Updated!");
-  } catch (e) {
+  } catch {
     reply("Failed!");
   }
 });
@@ -74,7 +72,6 @@ cmd({
   react: "👑",
   desc: "List admins",
   category: "group",
-  filename: __filename,
 }, async (danuwa, mek, m, { isGroup, reply, participants }) => {
 
   if (!isGroup) return reply("Group only!");
@@ -96,13 +93,12 @@ cmd({
   react: "⬇️",
   desc: "Demote admin",
   category: "group",
-  filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, quoted, args }) => {
 
   if (!isGroup || !isAdmins) return reply("Admins only!");
 
   const target = getTargetUser(mek, quoted, args);
-  if (!target) return reply("Mention user!");
+  if (!target) return reply("Reply user!");
 
   await danuwa.groupParticipantsUpdate(m.chat, [target], "demote");
   reply(`Demoted: @${target.split("@")[0]}`, { mentions: [target] });
@@ -113,7 +109,7 @@ cmd({
 cmd({
   pattern: "open",
   react: "🔓",
-  desc: "Unmute group",
+  desc: "Open group",
   category: "group",
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, from }) => {
 
@@ -128,7 +124,7 @@ cmd({
 cmd({
   pattern: "close",
   react: "🔒",
-  desc: "Mute group",
+  desc: "Close group",
   category: "group",
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, from }) => {
 
@@ -174,7 +170,7 @@ cmd({
 cmd({
   pattern: "setsubject",
   react: "✏️",
-  desc: "Change group name",
+  desc: "Change name",
   category: "group",
 }, async (danuwa, mek, m, { isGroup, isAdmins, args, reply }) => {
 
@@ -205,7 +201,6 @@ cmd({
 // ================= GROUP INFO =================
 cmd({
   pattern: "groupinfo",
-  alias: ["ginfo"],
   react: "📄",
   desc: "Group info",
   category: "group",
@@ -221,16 +216,17 @@ cmd({
     ? new Date(meta.creation * 1000).toLocaleString()
     : "Unknown";
 
-  let txt = `*${meta.subject}*\n\n`;
-  txt += `Members: ${meta.participants.length}\n`;
-  txt += `Admins: ${admins}\n`;
-  txt += `Created: ${creation}\n`;
+  reply(
+`*${meta.subject}*
 
-  reply(txt);
+👥 Members: ${meta.participants.length}
+👑 Admins: ${admins}
+📅 Created: ${creation}`
+  );
 });
 
 
-// ================= DEL (FIXED REAL DELETE) =================
+// ================= 🔥 FIXED DEL COMMAND =================
 cmd({
   pattern: "del",
   react: "🗑️",
@@ -240,17 +236,23 @@ cmd({
 
   if (!isGroup) return reply("Group only!");
   if (!isAdmins) return reply("Admins only!");
-
-  if (!quoted) return reply("Reply to message!");
+  if (!quoted) return reply("Reply message!");
 
   try {
+
+    const key = {
+      remoteJid: m.chat,
+      id: quoted.key.id,
+      participant: quoted.key.participant || quoted.key.remoteJid
+    };
+
     await danuwa.sendMessage(m.chat, {
-      delete: quoted.key
+      delete: key
     });
 
-    reply("Deleted!");
+    reply("🗑️ Deleted!");
   } catch (e) {
     console.log(e);
-    reply("Failed!");
+    reply("❌ Failed!");
   }
 });
