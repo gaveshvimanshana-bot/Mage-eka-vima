@@ -102,7 +102,7 @@ cmd({
         let menu = {
             main:'', download:'', owner:'',
             convert:'', ai:'', group:'', search:'',
-            fun:'', voice:'', other:''
+            fun:'', voice:'', owner:''
         };
 
         for (let c of commands) {
