@@ -36,21 +36,19 @@ cmd({
 });
 
 cmd({
-  pattern: "tagall",
+  pattern: "tagall2",
   react: "📢",
-  desc: "Tag all group members",
+  desc: "Silent tag all members",
   category: "group",
   filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants }) => {
 
-  if (!isGroup) return reply("*This command can only be used in groups.*");
-  if (!isAdmins) return reply("*Only group admins can use this command.*");
+  if (!isGroup) return reply("*Group only*");
+  if (!isAdmins) return reply("*Admins only*");
 
   let mentions = participants.map(p => p.id);
 
-  let text = "*📢 Attention everyone:*\n\n";
-
-  text += participants.map(p => `@${p.id.split("@")[0]}`).join(" ");
+  let text = "*📢 Attention everyone*\n\nHello all members 👋";
 
   return reply(text, { mentions });
 });
