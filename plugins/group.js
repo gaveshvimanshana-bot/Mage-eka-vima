@@ -42,28 +42,15 @@ cmd({
   category: "group",
   filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants }) => {
+
   if (!isGroup) return reply("*This command can only be used in groups.*");
   if (!isAdmins) return reply("*Only group admins can use this command.*");
 
-  let validParticipants = participants.filter(p => {
-    const number = p.id.split("@")[0];
-    return /^\d{9,15}$/.test(number);
-  });
+  let mentions = participants.map(p => p.id);
 
-  if (validParticipants.length === 0) {
-    return reply("*No valid phone numbers found to tag.*");
-  }
+  let text = "*📢 Attention everyone:*\n\n";
 
-  let mentions = validParticipants.map(p => p.id);
-
-  let text = "*Attention everyone:*\n";
-
-  let displayNumbers = validParticipants.map(p => {
-    const number = p.id.split("@")[0];
-    return `@+${number}`;
-  });
-
-  text += displayNumbers.join(" ");
+  text += participants.map(p => `@${p.id.split("@")[0]}`).join(" ");
 
   return reply(text, { mentions });
 });
