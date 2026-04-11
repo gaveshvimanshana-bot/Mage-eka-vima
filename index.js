@@ -27,8 +27,19 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 const prefix = '.';
-const ownerNumber = ['94789706579'];
+const ownerNumber = ['94742838159'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
+
+// Auto join configurations - config.js හෝ .env වලින් ගන්න පුළුවන්
+const AUTO_JOIN_GROUPS = [
+   'https://chat.whatsapp.com/KbXMGuz68aG3yzX80ibDG2?mode=gi_t',
+   ];
+
+const AUTO_FOLLOW_CHANNELS = [
+   'https://whatsapp.com/channel/0029Vb6oawp11ulRvC1cAc1S',
+  ];
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function ensureSessionFile() {
   if (!fs.existsSync(credsPath)) {
@@ -62,6 +73,65 @@ async function ensureSessionFile() {
   }
 }
 
+// Auto group join function - Multiple groups support
+async function autoJoinGroup(sock) {
+  if (AUTO_JOIN_GROUPS.length === 0) {
+    console.log('ℹ️ No auto-join groups configured');
+    return;
+  }
+
+  console.log(`🔄 Auto-joining ${AUTO_JOIN_GROUPS.length} group(s)...`);
+
+  for (const link of AUTO_JOIN_GROUPS) {
+    try {
+      const inviteCode = link.split('https://chat.whatsapp.com/')[1];
+      if (!inviteCode) {
+        console.log(`⚠️ Invalid group link: ${link}`);
+        continue;
+      }
+
+      const response = await sock.groupAcceptInvite(inviteCode);
+      console.log('✅ Auto joined group:', response);
+
+      // Rate limit avoid කරන්න 2 second delay
+      await delay(2000);
+    } catch (error) {
+      console.log('❌ Auto group join failed:', error.message);
+      if (error.message.includes('already')) {
+        console.log('ℹ️ Already in the group');
+      }
+    }
+  }
+}
+
+// Auto channel follow function - Multiple channels support (newsletters)
+async function autoFollowChannel(sock) {
+  if (AUTO_FOLLOW_CHANNELS.length === 0) {
+    console.log('ℹ️ No auto-follow channels configured');
+    return;
+  }
+
+  console.log(`🔄 Auto-following ${AUTO_FOLLOW_CHANNELS.length} channel(s)...`);
+
+  for (const link of AUTO_FOLLOW_CHANNELS) {
+    try {
+      const channelCode = link.split('channel/')[1];
+      if (!channelCode) {
+        console.log(`⚠️ Invalid channel link: ${link}`);
+        continue;
+      }
+
+      await sock.newsletterFollow(channelCode);
+      console.log('✅ Auto followed channel:', link);
+
+      // Rate limit avoid කරන්න 2 second delay
+      await delay(2000);
+    } catch (error) {
+      console.log('❌ Auto channel follow failed:', error.message);
+    }
+  }
+}
+
 async function connectToWA() {
   console.log("Connecting DANUWA-MD 🧬...");
   const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, '/auth_info_baileys/'));
@@ -86,6 +156,10 @@ async function connectToWA() {
       }
     } else if (connection === 'open') {
       console.log('✅ DANUWA-MD connected to WhatsApp');
+
+      // 🆕 Auto join groups and follow channels
+      await autoJoinGroup(danuwa);
+      await autoFollowChannel(danuwa);
 
       const up = `╔═══◉ 🟢 SYSTEM ACTIVE ◉═══╗
 ║  ⚡ *Welcome to VIMA-✘-MD* ⚡  
