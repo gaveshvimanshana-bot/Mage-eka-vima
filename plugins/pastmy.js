@@ -3,35 +3,43 @@ const axios = require("axios");
 
 cmd({
   pattern: "pa",
-  desc: "Download Past Paper",
+  desc: "Download Past Papers",
   category: "ai",
-  react: "🔥",
+  react: "🫟",
   filename: __filename
 },
-async (conn, mek, m, { from, reply }) => {
+async (conn, mek, m, { from, args, reply }) => {
+
+  const papers = {
+    science: "https://drive.google.com/uc?export=download&id=1g0CELfSKuKAp9lXGSrCACKs5BJcSUvgA",
+    maths: "",
+    ict: ""
+  };
+
+  let subject = args[0]?.toLowerCase();
+
+  if (!subject || !papers[subject]) {
+    return reply("📚 Use:\n.pastpaper science\n.pastpaper maths\n.pastpaper ict");
+  }
 
   try {
 
-    const url = "https://drive.google.com/uc?export=download&id=1g0CELfSKuKAp9lXGSrCACKs5BJcSUvgA";
+    await reply("⏳ Downloading " + subject + "...");
 
-    // 🔥 Download file as buffer
-    const response = await axios.get(url, {
+    const response = await axios.get(papers[subject], {
       responseType: "arraybuffer"
     });
 
-    const buffer = Buffer.from(response.data);
-
-    // 📄 Send file
     await conn.sendMessage(from, {
-      document: buffer,
+      document: Buffer.from(response.data),
       mimetype: "application/pdf",
-      fileName: "PastPaper.pdf",
-      caption: "📚 Past Paper Download"
+      fileName: `${subject}_pastpaper.pdf`,
+      caption: `✅ ${subject.toUpperCase()} Past Paper`
     }, { quoted: mek });
 
   } catch (e) {
     console.log(e);
-    reply("❌ Error downloading file! Try again.");
+    reply("❌ Error! Check link or file.");
   }
 
 });
