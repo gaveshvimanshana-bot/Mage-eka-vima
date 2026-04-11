@@ -1,51 +1,39 @@
-const { cmd } = require("../command");
 const axios = require("axios");
+const { cmd } = require("../command");
+
+const API_KEY = "646eae85127d7d99"; // ⚠️ direct key
 
 cmd(
   {
     pattern: "ai",
-    alias: ["chatgpt", "bot"],
+    alias: ["gpt", "ask"],
     react: "🤖",
-    desc: "Chat with AI",
+    desc: "AI Chat",
     category: "ai",
     filename: __filename,
   },
-  async (sock, mek, m, { from, q, reply }) => {
+  async (conn, mek, m, { q, reply }) => {
     try {
+      if (!q) return reply("❌ ප්‍රශ්නයක් දෙන්න.\nඋදා: .ai hi");
 
-      if (!q) return reply("❌ Question ekak danna!");
+      const url = `https://api-dark-shan-yt.koyeb.app/ai/perplexity`;
 
-      reply("🤖 Thinking...");
+      const res = await axios.get(url, {
+        params: {
+          q: q,
+          apikey: API_KEY,
+        },
+      });
 
-      // 🔥 STABLE FREE AI API
-      const res = await axios.get(
-        "https://api.simsimi.net/v2/",
-        {
-          params: {
-            text: q,
-            lc: "en"
-          }
-        }
-      );
+      const answer = res.data?.data?.response?.answer;
 
-      const answer = res.data.success;
+      if (!answer) return reply("❌ AI response නැහැ");
 
-      if (!answer) return reply("❌ AI response not found!");
-
-      await sock.sendMessage(from, {
-        text: `
-🤖 *AI RESPONSE*
-
-${answer}
-
-━━━━━━━━━━━━
-⚡ VIMA-MD AI
-        `
-      }, { quoted: mek });
+      reply(`🤖 *AI:*\n\n${answer}`);
 
     } catch (e) {
-      console.error(e);
-      reply("❌ AI error: " + (e.message || "Unknown"));
+      console.log(e);
+      reply("❌ AI error ආවා");
     }
   }
 );
