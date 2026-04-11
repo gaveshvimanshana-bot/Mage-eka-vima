@@ -35,22 +35,32 @@ cmd({
   return reply(`*Kicked:* @${target.split("@")[0]}`, { mentions: [target] });
 });
 
+const { cmd } = require("../command");
+
 cmd({
-  pattern: "tagall2",
+  pattern: "tagall",
   react: "📢",
-  desc: "Silent tag all members",
+  desc: "Tag all group members",
   category: "group",
   filename: __filename,
 }, async (danuwa, mek, m, { isGroup, isAdmins, reply, participants }) => {
 
-  if (!isGroup) return reply("*Group only*");
-  if (!isAdmins) return reply("*Admins only*");
+  if (!isGroup) return reply("*Group only command*");
+  if (!isAdmins) return reply("*Only admins can use this command*");
 
   let mentions = participants.map(p => p.id);
 
-  let text = "*📢 Attention everyone*\n\nHello all members 👋";
+  let text = "*📢 Attention everyone*\n\n";
 
-  return reply(text, { mentions });
+  text += participants
+    .map(p => `@${p.id.split("@")[0]}`)
+    .join(" ");
+
+  await danuwa.sendMessage(m.chat, {
+    text,
+    mentions
+  }, { quoted: m });
+
 });
 
 cmd({
