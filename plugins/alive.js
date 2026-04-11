@@ -101,7 +101,7 @@ cmd({
 
         let menu = {
             main:'', download:'', owner:'',
-            convert:'', ai:'', tools:'', search:'',
+            convert:'', ai:'', group:'', search:'',
             fun:'', voice:'', other:''
         };
 
