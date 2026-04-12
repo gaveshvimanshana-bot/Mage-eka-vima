@@ -1,23 +1,22 @@
 const { cmd } = require("../command");
 
-// ==================== FORWARD MESSAGE (FIXED) ====================
+// ==================== FORWARD MESSAGE (WORKING) ====================
 cmd({
   pattern: "forward",
   alias: ["fwd", "sendto", "share"],
   react: "📤",
-  desc: "Forward replied message to another chat/group/channel",
+  desc: "Forward replied message to another chat",
   category: "ai",
   filename: __filename,
-}, async (bot, mek, m, { reply, from, q, isQuoted }) => {
+}, async (bot, mek, m, { reply, from, q }) => {
   try {
     // Check if replied to message
-    if (!m.quoted && !isQuoted) {
+    if (!m.quoted) {
       return reply(`📤 *Forward Message*
 
 ❌ *Reply to a message to forward!*
 
-📌 *Usage:*
-• Reply to message + .forward <jid>
+📌 *Usage:* Reply to message + .forward <jid>
 
 📌 *Examples:*
 • Reply + .forward 120363423129646913@g.us
@@ -47,94 +46,126 @@ Format should be:
 
     await bot.sendMessage(from, { react: { text: "⏳", key: mek.key } });
 
-    // Get the quoted message properly
+    // Get quoted message
     const quotedMsg = m.quoted;
-    
-    // Create proper message object for forward
-    const msgToForward = {
-      key: {
-        remoteJid: quotedMsg.key.remoteJid || from,
-        fromMe: quotedMsg.key.fromMe || false,
-        id: quotedMsg.key.id,
-        participant: quotedMsg.key.participant || undefined
-      },
-      message: quotedMsg.message,
-      messageTimestamp: quotedMsg.messageTimestamp || Math.floor(Date.now() / 1000)
-    };
 
-    // Forward using Baileys native forward
-    await bot.sendMessage(targetJid, { 
-      forward: msgToForward,
-      force: true 
-    });
-
-    await reply(`✅ *Forwarded Successfully!*
-
+    // Method 1: Simple forward (works for most messages)
+    try {
+      await bot.sendMessage(targetJid, { 
+        forward: quotedMsg,
+        force: true 
+      });
+      
+      await reply(`✅ *Forwarded Successfully!*
+      
 📤 From: ${from}
 📥 To: ${targetJid}
-🆔 Message ID: ${quotedMsg.key.id}
 
 > _Vima-MD Forwarder_`);
+      
+      await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+      return;
+      
+    } catch (err1) {
+      console.log("Method 1 failed:", err1.message);
+    }
 
-    await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+    // Method 2: Reconstruct message object
+    try {
+      const reconstructedMsg = {
+        key: {
+          remoteJid: quotedMsg.key?.remoteJid || from,
+          fromMe: quotedMsg.key?.fromMe || false,
+          id: quotedMsg.key?.id,
+          participant: quotedMsg.key?.participant || undefined
+        },
+        message: quotedMsg.message,
+        messageTimestamp: quotedMsg.messageTimestamp || Math.floor(Date.now() / 1000)
+      };
+
+      await bot.sendMessage(targetJid, { 
+        forward: reconstructedMsg,
+        force: true 
+      });
+      
+      await reply(`✅ *Forwarded (Method 2)!*
+      
+📥 To: ${targetJid}
+
+> _Vima-MD Forwarder_`);
+      
+      await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+      return;
+      
+    } catch (err2) {
+      console.log("Method 2 failed:", err2.message);
+    }
+
+    // Method 3: Copy content by type (fallback)
+    try {
+      const msgType = Object.keys(quotedMsg.message)[0];
+      const content = quotedMsg.message[msgType];
+
+      if (msgType === 'conversation' || msgType === 'extendedTextMessage') {
+        const text = content.text || content;
+        await bot.sendMessage(targetJid, { text: text });
+      } 
+      else if (msgType === 'imageMessage') {
+        await bot.sendMessage(targetJid, { 
+          image: { url: content.url },
+          caption: content.caption || ''
+        });
+      }
+      else if (msgType === 'videoMessage') {
+        await bot.sendMessage(targetJid, { 
+          video: { url: content.url },
+          caption: content.caption || ''
+        });
+      }
+      else if (msgType === 'documentMessage') {
+        await bot.sendMessage(targetJid, { 
+          document: { url: content.url },
+          fileName: content.fileName || 'file',
+          mimetype: content.mimetype
+        });
+      }
+      else if (msgType === 'audioMessage') {
+        await bot.sendMessage(targetJid, { 
+          audio: { url: content.url },
+          ptt: content.ptt || false
+        });
+      }
+      else {
+        // Last resort - try to send as text
+        await bot.sendMessage(targetJid, { 
+          text: `[Forwarded message - type: ${msgType}]`
+        });
+      }
+
+      await reply(`✅ *Copied (Method 3)!*
+      
+📥 To: ${targetJid}
+⚠️ Note: Forward label not shown
+
+> _Vima-MD Forwarder_`);
+      
+      await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+      
+    } catch (err3) {
+      throw new Error(`All methods failed: ${err3.message}`);
+    }
 
   } catch (err) {
     console.error("Forward error:", err);
-    
-    // Try alternative method
-    try {
-      if (m.quoted) {
-        // Method 2: Copy message content directly
-        const quotedMsg = m.quoted;
-        const msgType = Object.keys(quotedMsg.message)[0];
-        const content = quotedMsg.message[msgType];
-        
-        // Send based on type
-        if (msgType === 'conversation' || msgType === 'extendedTextMessage') {
-          const text = content.text || content;
-          await bot.sendMessage(targetJid, { text: text });
-        } else if (msgType === 'imageMessage') {
-          await bot.sendMessage(targetJid, { 
-            image: content, 
-            caption: content.caption || '' 
-          });
-        } else if (msgType === 'videoMessage') {
-          await bot.sendMessage(targetJid, { 
-            video: content, 
-            caption: content.caption || '' 
-          });
-        } else if (msgType === 'documentMessage') {
-          await bot.sendMessage(targetJid, { 
-            document: content, 
-            fileName: content.fileName || 'file',
-            mimetype: content.mimetype 
-          });
-        } else if (msgType === 'audioMessage') {
-          await bot.sendMessage(targetJid, { 
-            audio: content, 
-            ptt: content.ptt || false 
-          });
-        } else {
-          // Generic forward for other types
-          await bot.sendMessage(targetJid, { forward: m.quoted });
-        }
-        
-        await reply(`✅ *Forwarded (Alternative Method)!*\n\n📥 To: ${targetJid}`);
-        await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
-        return;
-      }
-    } catch (err2) {
-      console.error("Alternative forward also failed:", err2);
-    }
-    
     reply(`❌ *Forward Failed!*
 
 Error: ${err.message}
 
-💡 *Try:*
-• Check if target JID is correct
-• Make sure bot is in target group
-• For channels, bot must be admin`);
+💡 *Tips:*
+• Make sure target JID is correct
+• Bot must be in target group (for groups)
+• For channels, bot must be admin
+• Try .copy command as alternative`);
     
     await bot.sendMessage(from, { react: { text: "❌", key: mek.key } });
   }
@@ -148,18 +179,16 @@ cmd({
   desc: "Get JID of current chat",
   category: "ai",
   filename: __filename,
-}, async (bot, mek, m, { reply, from, isGroup, pushname }) => {
+}, async (bot, mek, m, { reply, from }) => {
   try {
     let chatType = "Private Chat";
     if (from.endsWith('@g.us')) chatType = "Group";
     else if (from.endsWith('@newsletter')) chatType = "Channel";
-    else if (from.endsWith('@broadcast')) chatType = "Broadcast";
 
     await reply(`🆔 *Chat Information*
 
-👤 *Name:* ${pushname || 'Unknown'}
 📂 *Type:* ${chatType}
-🆔 *JID:* \`${from}\`
+🆔 *JID:* ${from}
 
 💡 *Use this JID with .forward command*
 
@@ -170,69 +199,72 @@ cmd({
   }
 });
 
-// ==================== COPY MESSAGE (Alternative) ====================
+// ==================== COPY (Alternative) ====================
 cmd({
   pattern: "copy",
-  alias: ["copymsg", "duplicate"],
+  alias: ["cpy", "duplicate"],
   react: "📋",
-  desc: "Copy message content (text/media) without forward label",
+  desc: "Copy message without forward label",
   category: "ai",
   filename: __filename,
-}, async (bot, mek, m, { reply, from, q, isQuoted }) => {
+}, async (bot, mek, m, { reply, from, q }) => {
   try {
-    if (!m.quoted && !isQuoted) {
-      return reply("❌ *Reply to a message to copy!*");
-    }
-
+    if (!m.quoted) return reply("❌ *Reply to a message!*");
     if (!q) return reply("❌ *Provide target JID!*");
 
     const targetJid = q.trim();
     const quotedMsg = m.quoted;
-    
-    // Get message type and content
     const msgType = Object.keys(quotedMsg.message)[0];
     const content = quotedMsg.message[msgType];
 
     await bot.sendMessage(from, { react: { text: "⏳", key: mek.key } });
 
-    // Send based on type (no forward label)
+    // Send based on type
     if (msgType === 'conversation') {
       await bot.sendMessage(targetJid, { text: content });
-    } else if (msgType === 'extendedTextMessage') {
+    } 
+    else if (msgType === 'extendedTextMessage') {
       await bot.sendMessage(targetJid, { text: content.text });
-    } else if (msgType === 'imageMessage') {
+    }
+    else if (msgType === 'imageMessage') {
       await bot.sendMessage(targetJid, { 
-        image: { url: content.url || content },
+        image: { url: content.url },
         caption: content.caption || ''
       });
-    } else if (msgType === 'videoMessage') {
+    }
+    else if (msgType === 'videoMessage') {
       await bot.sendMessage(targetJid, { 
-        video: { url: content.url || content },
+        video: { url: content.url },
         caption: content.caption || ''
       });
-    } else if (msgType === 'documentMessage') {
+    }
+    else if (msgType === 'documentMessage') {
       await bot.sendMessage(targetJid, { 
-        document: { url: content.url || content },
+        document: { url: content.url },
         fileName: content.fileName || 'file',
         mimetype: content.mimetype
       });
-    } else if (msgType === 'audioMessage') {
+    }
+    else if (msgType === 'audioMessage') {
       await bot.sendMessage(targetJid, { 
-        audio: { url: content.url || content },
+        audio: { url: content.url },
         ptt: content.ptt || false
       });
-    } else if (msgType === 'stickerMessage') {
+    }
+    else if (msgType === 'stickerMessage') {
       await bot.sendMessage(targetJid, { 
-        sticker: { url: content.url || content }
+        sticker: { url: content.url }
       });
-    } else {
-      // Fallback
-      await bot.sendMessage(targetJid, { text: `[Unsupported message type: ${msgType}]` });
+    }
+    else {
+      await bot.sendMessage(targetJid, { 
+        text: `[${msgType} message]`
+      });
     }
 
-    await reply(`✅ *Message Copied!*
-
-📋 Copied to: ${targetJid}
+    await reply(`✅ *Copied!*
+    
+📋 To: ${targetJid}
 📄 Type: ${msgType}
 
 > _Vima-MD Copier_`);
