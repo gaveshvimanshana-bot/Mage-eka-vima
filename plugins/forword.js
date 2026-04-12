@@ -8,9 +8,9 @@ cmd({
   desc: "Forward replied message to another chat",
   category: "ai",
   filename: __filename,
-}, async (bot, mek, m, { reply, from, q }) => {
+}, async (bot, mek, m, { reply, from, q, sender }) => {
   try {
-    // Check if replied to message
+    // IMPORTANT: Check m.quoted (not isQuoted)
     if (!m.quoted) {
       return reply(`📤 *Forward Message*
 
@@ -21,7 +21,6 @@ cmd({
 📌 *Examples:*
 • Reply + .forward 120363423129646913@g.us
 • Reply + .forward 120363405437936771@newsletter
-• Reply + .forward 94712345678@s.whatsapp.net
 
 💡 *Get JID:* Use .getjid command
 
@@ -34,22 +33,24 @@ cmd({
 
     const targetJid = q.trim();
 
-    // Validate JID
     if (!targetJid.includes('@')) {
       return reply(`❌ *Invalid JID!*
 
-Format should be:
-• 94712345678@s.whatsapp.net (Private)
-• 120363...@g.us (Group)
-• 120363...@newsletter (Channel)`);
+Format:
+• 94712345678@s.whatsapp.net
+• 120363...@g.us
+• 120363...@newsletter`);
     }
 
     await bot.sendMessage(from, { react: { text: "⏳", key: mek.key } });
 
-    // Get quoted message
+    // Get the quoted message
     const quotedMsg = m.quoted;
 
-    // Method 1: Simple forward (works for most messages)
+    // Log for debugging
+    console.log("Quoted message structure:", JSON.stringify(quotedMsg.key, null, 2));
+
+    // Method 1: Direct forward (works with complete message object)
     try {
       await bot.sendMessage(targetJid, { 
         forward: quotedMsg,
@@ -67,12 +68,12 @@ Format should be:
       return;
       
     } catch (err1) {
-      console.log("Method 1 failed:", err1.message);
+      console.log("Direct forward failed:", err1.message);
     }
 
-    // Method 2: Reconstruct message object
+    // Method 2: Reconstruct message with required fields
     try {
-      const reconstructedMsg = {
+      const forwardMsg = {
         key: {
           remoteJid: quotedMsg.key?.remoteJid || from,
           fromMe: quotedMsg.key?.fromMe || false,
@@ -80,11 +81,12 @@ Format should be:
           participant: quotedMsg.key?.participant || undefined
         },
         message: quotedMsg.message,
-        messageTimestamp: quotedMsg.messageTimestamp || Math.floor(Date.now() / 1000)
+        messageTimestamp: quotedMsg.messageTimestamp || Math.floor(Date.now() / 1000),
+        pushName: quotedMsg.pushName || undefined
       };
 
       await bot.sendMessage(targetJid, { 
-        forward: reconstructedMsg,
+        forward: forwardMsg,
         force: true 
       });
       
@@ -98,10 +100,10 @@ Format should be:
       return;
       
     } catch (err2) {
-      console.log("Method 2 failed:", err2.message);
+      console.log("Reconstructed forward failed:", err2.message);
     }
 
-    // Method 3: Copy content by type (fallback)
+    // Method 3: Copy content (no forward label)
     try {
       const msgType = Object.keys(quotedMsg.message)[0];
       const content = quotedMsg.message[msgType];
@@ -136,18 +138,16 @@ Format should be:
         });
       }
       else {
-        // Last resort - try to send as text
         await bot.sendMessage(targetJid, { 
-          text: `[Forwarded message - type: ${msgType}]`
+          text: `[Forwarded ${msgType}]`
         });
       }
 
-      await reply(`✅ *Copied (Method 3)!*
+      await reply(`✅ *Copied (no forward label)!*
       
 📥 To: ${targetJid}
-⚠️ Note: Forward label not shown
 
-> _Vima-MD Forwarder_`);
+> _Vima-MD Copier_`);
       
       await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
       
@@ -161,11 +161,10 @@ Format should be:
 
 Error: ${err.message}
 
-💡 *Tips:*
-• Make sure target JID is correct
-• Bot must be in target group (for groups)
-• For channels, bot must be admin
-• Try .copy command as alternative`);
+💡 Check:
+• Target JID is correct
+• Bot is in target group
+• For channels, bot must be admin`);
     
     await bot.sendMessage(from, { react: { text: "❌", key: mek.key } });
   }
@@ -174,105 +173,27 @@ Error: ${err.message}
 // ==================== GET JID ====================
 cmd({
   pattern: "getjid",
-  alias: ["jid", "chatid", "id"],
+  alias: ["jid", "chatid"],
   react: "🆔",
   desc: "Get JID of current chat",
   category: "ai",
   filename: __filename,
 }, async (bot, mek, m, { reply, from }) => {
   try {
-    let chatType = "Private Chat";
+    let chatType = "Private";
     if (from.endsWith('@g.us')) chatType = "Group";
     else if (from.endsWith('@newsletter')) chatType = "Channel";
 
     await reply(`🆔 *Chat Information*
 
 📂 *Type:* ${chatType}
-🆔 *JID:* ${from}
+🆔 *JID:* \`${from}\`
 
-💡 *Use this JID with .forward command*
+💡 Use with .forward command
 
-> _Vima-MD ID Getter_`);
-
-  } catch (err) {
-    reply("❌ *Failed to get JID!*");
-  }
-});
-
-// ==================== COPY (Alternative) ====================
-cmd({
-  pattern: "copy",
-  alias: ["cpy", "duplicate"],
-  react: "📋",
-  desc: "Copy message without forward label",
-  category: "ai",
-  filename: __filename,
-}, async (bot, mek, m, { reply, from, q }) => {
-  try {
-    if (!m.quoted) return reply("❌ *Reply to a message!*");
-    if (!q) return reply("❌ *Provide target JID!*");
-
-    const targetJid = q.trim();
-    const quotedMsg = m.quoted;
-    const msgType = Object.keys(quotedMsg.message)[0];
-    const content = quotedMsg.message[msgType];
-
-    await bot.sendMessage(from, { react: { text: "⏳", key: mek.key } });
-
-    // Send based on type
-    if (msgType === 'conversation') {
-      await bot.sendMessage(targetJid, { text: content });
-    } 
-    else if (msgType === 'extendedTextMessage') {
-      await bot.sendMessage(targetJid, { text: content.text });
-    }
-    else if (msgType === 'imageMessage') {
-      await bot.sendMessage(targetJid, { 
-        image: { url: content.url },
-        caption: content.caption || ''
-      });
-    }
-    else if (msgType === 'videoMessage') {
-      await bot.sendMessage(targetJid, { 
-        video: { url: content.url },
-        caption: content.caption || ''
-      });
-    }
-    else if (msgType === 'documentMessage') {
-      await bot.sendMessage(targetJid, { 
-        document: { url: content.url },
-        fileName: content.fileName || 'file',
-        mimetype: content.mimetype
-      });
-    }
-    else if (msgType === 'audioMessage') {
-      await bot.sendMessage(targetJid, { 
-        audio: { url: content.url },
-        ptt: content.ptt || false
-      });
-    }
-    else if (msgType === 'stickerMessage') {
-      await bot.sendMessage(targetJid, { 
-        sticker: { url: content.url }
-      });
-    }
-    else {
-      await bot.sendMessage(targetJid, { 
-        text: `[${msgType} message]`
-      });
-    }
-
-    await reply(`✅ *Copied!*
-    
-📋 To: ${targetJid}
-📄 Type: ${msgType}
-
-> _Vima-MD Copier_`);
-    
-    await bot.sendMessage(from, { react: { text: "✅", key: mek.key } });
+> _Vima-MD_`);
 
   } catch (err) {
-    console.error("Copy error:", err);
-    reply("❌ *Copy failed!*");
+    reply("❌ *Failed!*");
   }
 });
