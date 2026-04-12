@@ -1,8 +1,9 @@
 const { cmd } = require("../command");
+const { jidNormalizedUser } = require("@whiskeysockets/baileys");
 
 cmd({
   pattern: "getdp",
-  desc: "Download WhatsApp DP",
+  desc: "Get WhatsApp DP",
   category: "ai",
   react: "🖼️",
   filename: __filename
@@ -10,29 +11,33 @@ cmd({
 async (conn, mek, m, { args, reply }) => {
 
   try {
-    if (!args[0]) {
-      return reply("❌ Number eka denna!\nExample: .getdp 947XXXXXXXX");
+    let jid;
+
+    if (m.quoted) {
+      jid = m.quoted.sender;
+    } else if (args[0]) {
+      let number = args[0].replace(/[^0-9]/g, "");
+      jid = jidNormalizedUser(number + "@s.whatsapp.net");
+    } else {
+      return reply("❌ Reply or give number");
     }
 
-    let number = args[0].replace(/[^0-9]/g, "");
-    let jid = number + "@s.whatsapp.net";
-
-    let pp;
+    let ppUrl;
 
     try {
-      pp = await conn.profilePictureUrl(jid, "image");
+      ppUrl = await conn.profilePictureUrl(jid, "image");
     } catch {
-      pp = "https://i.ibb.co/2WzKQ6w/avatar.png"; // fallback image
+      return reply("❌ DP not found / private");
     }
 
     await conn.sendMessage(m.chat, {
-      image: { url: pp },
-      caption: `📸 DP of ${number}`
+      image: { url: ppUrl },
+      caption: "✅ Here is DP"
     }, { quoted: mek });
 
-  } catch (err) {
-    console.log(err);
-    reply("❌ Error occurred");
+  } catch (e) {
+    console.log(e);
+    reply("❌ Error");
   }
 
 });
