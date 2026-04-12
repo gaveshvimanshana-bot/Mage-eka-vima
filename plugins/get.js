@@ -1,9 +1,9 @@
 const { cmd } = require("../command");
-const { jidNormalizedUser } = require("@whiskeysockets/baileys");
+const axios = require("axios");
 
 cmd({
   pattern: "getdp",
-  desc: "Get WhatsApp DP",
+  desc: "Get DP using API",
   category: "ai",
   react: "🖼️",
   filename: __filename
@@ -11,33 +11,31 @@ cmd({
 async (conn, mek, m, { args, reply }) => {
 
   try {
-    let jid;
-
-    if (m.quoted) {
-      jid = m.quoted.sender;
-    } else if (args[0]) {
-      let number = args[0].replace(/[^0-9]/g, "");
-      jid = jidNormalizedUser(number + "@s.whatsapp.net");
-    } else {
-      return reply("❌ Reply or give number");
+    if (!args[0]) {
+      return reply("❌ Number ekak denna\nExample: .getdp 947XXXXXXXX");
     }
 
-    let ppUrl;
+    let number = args[0].replace(/[^0-9]/g, "");
 
-    try {
-      ppUrl = await conn.profilePictureUrl(jid, "image");
-    } catch {
-      return reply("❌ DP not found / private");
+    // 🔥 API URL (sample free API)
+    let api = `https://api.popcat.xyz/whatsappdp?number=${number}`;
+
+    let res = await axios.get(api);
+
+    if (!res.data || !res.data.dp) {
+      return reply("❌ DP not found!");
     }
+
+    let dp = res.data.dp;
 
     await conn.sendMessage(m.chat, {
-      image: { url: ppUrl },
-      caption: "✅ Here is DP"
+      image: { url: dp },
+      caption: `✅ API DP of ${number}`
     }, { quoted: mek });
 
   } catch (e) {
     console.log(e);
-    reply("❌ Error");
+    reply("❌ API Error");
   }
 
 });
