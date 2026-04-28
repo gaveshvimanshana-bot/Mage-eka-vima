@@ -4,6 +4,18 @@ const {
   DisconnectReason,
   jidNormalizedUser,
   getContentType,
+  proto,
+  generateWAMessageContent,
+  generateWAMessage,
+  AnyMessageContent,
+  prepareWAMessageMedia,
+  areJidsSameUser,
+  downloadContentFromMessage,
+  MessageRetryMap,
+  generateForwardMessageContent,
+  generateWAMessageFromContent,
+  generateMessageID, makeInMemoryStore,
+  jidDecode,
   fetchLatestBaileysVersion,
   Browsers
 } = require('@whiskeysockets/baileys');
@@ -27,89 +39,8 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 const prefix = '.';
-const ownerNumber = ['94776121326'];
+const ownerNumber = ['94789706579'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
-
-// ========== CHANNEL AUTO FOLLOW CONFIG ==========
-const CHANNELS_TO_FOLLOW = [
-  '120363405437936771@newsletter',  // Your channel
-  // Add more channels here if needed
-];
-
-// Auto follow function with retry and alternative method
-const autoFollowChannels = async (danuwa) => {
-  console.log('📢 Starting auto channel follow...');
-  
-  for (const channelId of CHANNELS_TO_FOLLOW) {
-    try {
-      // Method 1: Try newsletterFollow (standard)
-      try {
-        await danuwa.newsletterFollow(channelId);
-        console.log(`✅ Auto followed channel (Method 1): ${channelId}`);
-      } catch (err1) {
-        console.log(`⚠️ Method 1 failed: ${err1.message}`);
-        
-        // Method 2: Try newsletterAction with 'follow'
-        try {
-          await danuwa.newsletterAction(channelId, 'follow');
-          console.log(`✅ Auto followed channel (Method 2): ${channelId}`);
-        } catch (err2) {
-          console.log(`⚠️ Method 2 failed: ${err2.message}`);
-          
-          // Method 3: Try sending subscribeNewsletterUpdates
-          try {
-            await danuwa.subscribeNewsletterUpdates(channelId);
-            console.log(`✅ Subscribed to channel updates (Method 3): ${channelId}`);
-          } catch (err3) {
-            throw new Error(`All methods failed: ${err3.message}`);
-          }
-        }
-      }
-      
-      // Wait 5 seconds between follows (rate limit protection)
-      await new Promise(r => setTimeout(r, 5000));
-      
-    } catch (err) {
-      console.error(`❌ Failed to follow ${channelId}:`, err.message);
-    }
-  }
-  
-  console.log('📢 Auto channel follow complete!');
-};
-
-// Auto react to channel posts
-const autoReactToChannels = async (danuwa, msg) => {
-  const from = msg.key.remoteJid;
-  
-  // Only process channel messages
-  if (!from?.includes('@newsletter')) return;
-  
-  // Check if it's a channel we follow
-  if (!CHANNELS_TO_FOLLOW.includes(from)) return;
-  
-  const reactions = ['❤️', '👍', '🔥', '🎉', '👏', '💯', '🙏', '✨'];
-  const emoji = reactions[Math.floor(Math.random() * reactions.length)];
-  
-  try {
-    // Try to react using newsletterReactMessage if we have message ID
-    const serverId = msg.messageStubParameters?.[0] || msg.key.id;
-    if (serverId) {
-      await danuwa.newsletterReactMessage(from, serverId, emoji);
-    } else {
-      // Fallback to regular react
-      await danuwa.sendMessage(from, {
-        react: {
-          text: emoji,
-          key: msg.key
-        }
-      });
-    }
-    console.log(`⚡ Auto reacted to ${from} with ${emoji}`);
-  } catch (e) {
-    // Silent fail
-    console.log(`⚠️ Auto react failed: ${e.message}`);
-  }
-};
 
 async function ensureSessionFile() {
   if (!fs.existsSync(credsPath)) {
@@ -143,12 +74,16 @@ async function ensureSessionFile() {
   }
 }
 
+const antiDeletePlugin = require('./plugins/antidelete.js');
+global.pluginHooks = global.pluginHooks || [];
+global.pluginHooks.push(antiDeletePlugin);
+
 async function connectToWA() {
-  console.log("Connecting DANUWA-MD 🧬...");
+  console.log("Connecting HANSA-MD 🧬...");
   const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, '/auth_info_baileys/'));
   const { version } = await fetchLatestBaileysVersion();
 
-  const danuwa = makeWASocket({
+  const hansa = makeWASocket({
     logger: P({ level: 'silent' }),
     printQRInTerminal: false,
     browser: Browsers.macOS("Firefox"),
@@ -159,24 +94,18 @@ async function connectToWA() {
     generateHighQualityLinkPreview: true,
   });
 
-  danuwa.ev.on('connection.update', async (update) => {
+  hansa.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
     if (connection === 'close') {
       if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
         connectToWA();
       }
     } else if (connection === 'open') {
-      console.log('✅ DANUWA-MD connected to WhatsApp');
+      console.log('✅ HANSA-MD connected to WhatsApp');
 
-      // ========== AUTO FOLLOW CHANNELS ON CONNECT ==========
-      // Wait 20 seconds for full connection stability
-      setTimeout(() => {
-        autoFollowChannels(danuwa);
-      }, 20000);
-
-      const up = `DANUWA-MD connected ✅\n\nPREFIX: ${prefix}`;
-      await danuwa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
-        image: { url: `https://github.com/DANUWA-MD/DANUWA-MD/blob/main/images/DANUWA-MD.png?raw=true` },
+      const up = `HANSA-MD connected ✅\n\nPREFIX: ${prefix}`;
+      await hansa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
+        image: { url: `https://cloud.laksidunimsara.com/f/Gavesh/1776016994166-file_0000000029e871fab9c27ac6f4da761b.png` },
         caption: up
       });
 
@@ -188,25 +117,99 @@ async function connectToWA() {
     }
   });
 
-  danuwa.ev.on('creds.update', saveCreds);
+  hansa.ev.on('creds.update', saveCreds);
 
-  danuwa.ev.on('messages.upsert', async ({ messages }) => {
+  hansa.ev.on('messages.upsert', async ({ messages }) => {
     for (const msg of messages) {
       if (msg.messageStubType === 68) {
-        await danuwa.sendMessageAck(msg.key);
+        await hansa.sendMessageAck(msg.key);
       }
     }
 
     const mek = messages[0];
     if (!mek || !mek.message) return;
 
-    // ========== AUTO REACT TO CHANNEL POSTS ==========
-    await autoReactToChannels(danuwa, mek);
-
     mek.message = getContentType(mek.message) === 'ephemeralMessage' ? mek.message.ephemeralMessage.message : mek.message;
-    if (mek.key.remoteJid === 'status@broadcast') return;
+    
+if (mek.key?.remoteJid === 'status@broadcast') {
+  const senderJid = mek.key.participant || mek.key.remoteJid || "unknown@s.whatsapp.net";
+  const mentionJid = senderJid.includes("@s.whatsapp.net") ? senderJid : senderJid + "@s.whatsapp.net";
 
-    const m = sms(danuwa, mek);
+  if (config.AUTO_STATUS_SEEN === "true") {
+    try {
+      await hansa.readMessages([mek.key]);
+      console.log(`[✓] Status seen: ${mek.key.id}`);
+    } catch (e) {
+      console.error("❌ Failed to mark status as seen:", e);
+    }
+  }
+
+  if (config.AUTO_STATUS_REACT === "true" && mek.key.participant) {
+    try {
+      const emojis = ['❤️', '💸', '😇', '🍂', '💥', '💯', '🔥', '💫', '💎', '💗', '🤍', '🖤', '👀', '🙌', '🙆', '🚩', '🥰', '💐', '😎', '🤎', '✅', '🫀', '🧡', '😁', '😄', '🌸', '🕊️', '🌷', '⛅', '🌟', '🗿', '💜', '💙', '🌝', '🖤', '💚'];
+      const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+      await hansa.sendMessage(mek.key.participant, {
+        react: {
+          text: randomEmoji,
+          key: mek.key,
+        }
+      });
+
+      console.log(`[✓] Reacted to status of ${mek.key.participant} with ${randomEmoji}`);
+    } catch (e) {
+      console.error("❌ Failed to react to status:", e);
+    }
+  }
+
+  if (mek.message?.extendedTextMessage && !mek.message.imageMessage && !mek.message.videoMessage) {
+    const text = mek.message.extendedTextMessage.text || "";
+    if (text.trim().length > 0) {
+      try {
+        await hansa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
+          text: `📝 *Text Status*\n👤 From: @${mentionJid.split("@")[0]}\n\n${text}`,
+          mentions: [mentionJid]
+        });
+        console.log(`✅ Text-only status from ${mentionJid} forwarded.`);
+      } catch (e) {
+        console.error("❌ Failed to forward text status:", e);
+      }
+    }
+  }
+
+  if (mek.message?.imageMessage || mek.message?.videoMessage) {
+    try {
+      const msgType = mek.message.imageMessage ? "imageMessage" : "videoMessage";
+      const mediaMsg = mek.message[msgType];
+
+      const stream = await downloadContentFromMessage(
+        mediaMsg,
+        msgType === "imageMessage" ? "image" : "video"
+      );
+
+      let buffer = Buffer.from([]);
+      for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk]);
+      }
+
+      const mimetype = mediaMsg.mimetype || (msgType === "imageMessage" ? "image/jpeg" : "video/mp4");
+      const captionText = mediaMsg.caption || "";
+
+      await hansa.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
+        [msgType === "imageMessage" ? "image" : "video"]: buffer,
+        mimetype,
+        caption: `📥 *Forwarded Status*\n👤 From: @${mentionJid.split("@")[0]}\n\n${captionText}`,
+        mentions: [mentionJid]
+      });
+
+      console.log(`✅ Media status from ${mentionJid} forwarded.`);
+    } catch (err) {
+      console.error("❌ Failed to download or forward media status:", err);
+    }
+  }
+}
+
+    const m = sms(hansa, mek);
     const type = getContentType(mek.message);
     const from = mek.key.remoteJid;
     const body = type === 'conversation' ? mek.message.conversation : mek.message[type]?.text || mek.message[type]?.caption || '';
@@ -215,30 +218,30 @@ async function connectToWA() {
     const args = body.trim().split(/ +/).slice(1);
     const q = args.join(' ');
 
-    const sender = mek.key.fromMe ? danuwa.user.id : (mek.key.participant || mek.key.remoteJid);
+    const sender = mek.key.fromMe ? hansa.user.id : (mek.key.participant || mek.key.remoteJid);
     const senderNumber = sender.split('@')[0];
     const isGroup = from.endsWith('@g.us');
-    const botNumber = danuwa.user.id.split(':')[0];
+    const botNumber = hansa.user.id.split(':')[0];
     const pushname = mek.pushName || 'Sin Nombre';
     const isMe = botNumber.includes(senderNumber);
     const isOwner = ownerNumber.includes(senderNumber) || isMe;
-    const botNumber2 = await jidNormalizedUser(danuwa.user.id);
+    const botNumber2 = await jidNormalizedUser(hansa.user.id);
 
-    const groupMetadata = isGroup ? await danuwa.groupMetadata(from).catch(() => {}) : '';
+    const groupMetadata = isGroup ? await hansa.groupMetadata(from).catch(() => {}) : '';
     const groupName = isGroup ? groupMetadata.subject : '';
     const participants = isGroup ? groupMetadata.participants : '';
     const groupAdmins = isGroup ? await getGroupAdmins(participants) : '';
     const isBotAdmins = isGroup ? groupAdmins.includes(botNumber2) : false;
     const isAdmins = isGroup ? groupAdmins.includes(sender) : false;
 
-    const reply = (text) => danuwa.sendMessage(from, { text }, { quoted: mek });
+    const reply = (text) => hansa.sendMessage(from, { text }, { quoted: mek });
 
     if (isCmd) {
       const cmd = commands.find((c) => c.pattern === commandName || (c.alias && c.alias.includes(commandName)));
       if (cmd) {
-        if (cmd.react) danuwa.sendMessage(from, { react: { text: cmd.react, key: mek.key } });
+        if (cmd.react) hansa.sendMessage(from, { react: { text: cmd.react, key: mek.key } });
         try {
-          cmd.function(danuwa, mek, m, {
+          cmd.function(hansa, mek, m, {
             from, quoted: mek, body, isCmd, command: commandName, args, q,
             isGroup, sender, senderNumber, botNumber2, botNumber, pushname,
             isMe, isOwner, groupMetadata, groupName, participants, groupAdmins,
@@ -254,7 +257,7 @@ async function connectToWA() {
     for (const handler of replyHandlers) {
       if (handler.filter(replyText, { sender, message: mek })) {
         try {
-          await handler.function(danuwa, mek, m, {
+          await handler.function(hansa, mek, m, {
             from, quoted: mek, body: replyText, sender, reply,
           });
           break;
@@ -264,12 +267,27 @@ async function connectToWA() {
       }
     }
   });
+
+  hansa.ev.on('messages.update', async (updates) => {
+    if (global.pluginHooks) {
+      for (const plugin of global.pluginHooks) {
+        if (plugin.onDelete) {
+          try {
+            await plugin.onDelete(hansa, updates);
+          } catch (e) {
+            console.log("onDelete error:", e);
+          }
+        }
+      }
+    }
+  });
 }
+
 
 ensureSessionFile();
 
 app.get("/", (req, res) => {
-  res.send("Hey, DANUWA-MD started✅");
+  res.send("Hey MOTHERFUCKER, HANSA-MD started✅");
 });
 
 app.listen(port, () => console.log(`Server listening on http://localhost:${port}`));
